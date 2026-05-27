@@ -1,12 +1,8 @@
-/**
- * Context generation engine.
- * Transforms raw portfolio data into structured markdown context files.
- */
-
 import type { PortfolioSnapshot, PortfolioHolding } from "./exchange";
+import type { WalletSnapshot } from "./wallet";
 
 export interface UserContext {
-  portfolio: string; // portfolio.md content
+  portfolio: string;
   updatedAt: string;
 }
 
@@ -18,75 +14,97 @@ function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }
 
-/**
- * Generate portfolio.md from one or more exchange snapshots.
- */
 export function generatePortfolioContext(
-  snapshots: PortfolioSnapshot[]
+  snapshots: PortfolioSnapshot[],
+  walletSnapshots: WalletSnapshot[] = []
 ): string {
-  if (snapshots.length === 0) {
-    return "# Portfolio\n\nNo exchanges connected yet.";
+  if (snapshots.length === 0 && walletSnapshots.length === 0) {
+    return "# Portfolio\n\nNo exchanges or wallets connected yet.";
   }
 
-  // Aggregate holdings across exchanges
   const aggregated = new Map<
     string,
     {
       asset: string;
       total: number;
       usdValue: number;
-      venues: { exchange: string; amount: number }[];
+      venues: { source: string; amount: number }[];
     }
   >();
 
   let grandTotal = 0;
 
+  // Aggregate CEX holdings
   for (const snapshot of snapshots) {
     for (const h of snapshot.holdings) {
       const existing = aggregated.get(h.asset);
       if (existing) {
         existing.total += h.total;
         existing.usdValue += h.usdValue ?? 0;
-        existing.venues.push({ exchange: snapshot.exchange, amount: h.total });
+        existing.venues.push({ source: snapshot.exchange, amount: h.total });
       } else {
         aggregated.set(h.asset, {
           asset: h.asset,
           total: h.total,
           usdValue: h.usdValue ?? 0,
-          venues: [{ exchange: snapshot.exchange, amount: h.total }],
+          venues: [{ source: snapshot.exchange, amount: h.total }],
         });
       }
     }
     grandTotal += snapshot.totalUsdValue;
   }
 
-  // Sort by USD value
+  // Aggregate wallet holdings
+  for (const ws of walletSnapshots) {
+    for (const h of ws.holdings) {
+      const existing = aggregated.get(h.asset);
+      if (existing) {
+        existing.total += h.total;
+        existing.usdValue += h.usdValue ?? 0;
+        existing.venues.push({ source: h.source, amount: h.total });
+      } else {
+        aggregated.set(h.asset, {
+          asset: h.asset,
+          total: h.total,
+          usdValue: h.usdValue ?? 0,
+          venues: [{ source: h.source, amount: h.total }],
+        });
+      }
+    }
+    grandTotal += ws.totalUsdValue;
+  }
+
   const sorted = Array.from(aggregated.values()).sort(
     (a, b) => b.usdValue - a.usdValue
   );
 
-  // Build markdown
   const lines: string[] = [];
-  const lastSync = snapshots
-    .map((s) => s.fetchedAt)
-    .sort()
-    .pop();
+
+  const cexSyncs = snapshots.map((s) => s.fetchedAt);
+  const walletSyncs = walletSnapshots.map((s) => s.fetchedAt);
+  const lastSync = [...cexSyncs, ...walletSyncs].sort().pop();
+
+  const sourceCount = snapshots.length + walletSnapshots.length;
+  const sourceParts: string[] = [];
+  if (snapshots.length > 0)
+    sourceParts.push(`${snapshots.length} exchange${snapshots.length > 1 ? "s" : ""}`);
+  if (walletSnapshots.length > 0)
+    sourceParts.push(`${walletSnapshots.length} wallet${walletSnapshots.length > 1 ? "s" : ""}`);
 
   lines.push("# Portfolio Snapshot");
   lines.push(`> Last synced: ${lastSync}`);
   lines.push(
-    `> Total value: ${formatUsd(grandTotal)} (across ${snapshots.length} exchange${snapshots.length > 1 ? "s" : ""})`
+    `> Total value: ${formatUsd(grandTotal)} (across ${sourceParts.join(" + ")})`
   );
   lines.push("");
 
-  // Holdings table
   lines.push("## Holdings");
   lines.push("");
   lines.push("| Asset | Amount | Value | % of Portfolio | Location |");
   lines.push("|-------|--------|-------|----------------|----------|");
 
   for (const h of sorted) {
-    if (h.usdValue < 1) continue; // skip dust
+    if (h.usdValue < 1) continue;
 
     const pct =
       grandTotal > 0 ? formatPercent((h.usdValue / grandTotal) * 100) : "—";
@@ -94,7 +112,7 @@ export function generatePortfolioContext(
     const location = h.venues
       .map(
         (v) =>
-          `${v.exchange} (${v.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })})`
+          `${v.source} (${v.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })})`
       )
       .join(" + ");
 
@@ -105,7 +123,6 @@ export function generatePortfolioContext(
 
   lines.push("");
 
-  // Concentration analysis
   if (sorted.length > 0 && grandTotal > 0) {
     lines.push("## Concentration");
 
@@ -122,7 +139,6 @@ export function generatePortfolioContext(
       `- Top 3 assets: ${formatPercent((top3value / grandTotal) * 100)}`
     );
 
-    // Stablecoin ratio
     const stablecoins = ["USDT", "USDC", "USD", "BUSD", "DAI", "TUSD"];
     const stableValue = sorted
       .filter((h) => stablecoins.includes(h.asset))
@@ -134,12 +150,19 @@ export function generatePortfolioContext(
 
     lines.push("");
 
-    // Exchange distribution
-    lines.push("## Exchange Distribution");
+    // Source distribution
+    lines.push("## Distribution");
     for (const snapshot of snapshots) {
       const pct = (snapshot.totalUsdValue / grandTotal) * 100;
       lines.push(
         `- ${snapshot.exchange}: ${formatPercent(pct)} (${formatUsd(snapshot.totalUsdValue)})`
+      );
+    }
+    for (const ws of walletSnapshots) {
+      const pct = (ws.totalUsdValue / grandTotal) * 100;
+      const shortAddr = `${ws.address.slice(0, 6)}...${ws.address.slice(-4)}`;
+      lines.push(
+        `- ${ws.chain}:${shortAddr}: ${formatPercent(pct)} (${formatUsd(ws.totalUsdValue)})`
       );
     }
   }
@@ -147,14 +170,12 @@ export function generatePortfolioContext(
   return lines.join("\n");
 }
 
-/**
- * Generate a user context object from snapshots.
- */
 export function buildUserContext(
-  snapshots: PortfolioSnapshot[]
+  snapshots: PortfolioSnapshot[],
+  walletSnapshots: WalletSnapshot[] = []
 ): UserContext {
   return {
-    portfolio: generatePortfolioContext(snapshots),
+    portfolio: generatePortfolioContext(snapshots, walletSnapshots),
     updatedAt: new Date().toISOString(),
   };
 }

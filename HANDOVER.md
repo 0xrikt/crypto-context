@@ -2,7 +2,7 @@
 
 > 最后更新：2026-05-27
 
-## 当前状态：V1 验收完成
+## 当前状态：V1.1 开发完成
 
 **线上地址**：https://app-rho-jet-70.vercel.app
 
@@ -15,59 +15,55 @@
 | Bitget 连接 | ✅ 正常 | 生产环境浏览器验证，portfolio 显示 $6,555 (BGB) |
 | Portfolio 同步 | ✅ 正常 | Bitget 验证通过，dashboard + MCP 双通道 |
 | 10 交易所支持 | ✅ 代码就绪 | 浏览器验证下拉框 10 家交易所、passphrase 字段逻辑 |
-| MCP 发现端点 | ✅ 正常 | `GET /api/mcp` 返回 server info + tools |
-| MCP initialize | ✅ 正常 | JSON-RPC 2.0，协议版本 2024-11-05 |
-| MCP tools/list | ✅ 正常 | 返回 get_portfolio + get_context 含 inputSchema |
-| MCP get_portfolio | ✅ 正常 | curl 端到端测试，返回实时 BGB 持仓 |
+| MCP 端到端 | ✅ 正常 | JSON-RPC 2.0 完整验证（initialize, tools/list, tools/call, ping） |
+| MCP get_portfolio | ✅ 正常 | curl 端到端测试，asset 过滤正常 |
 | MCP get_context | ✅ 正常 | V1 返回全量 portfolio |
-| MCP asset 过滤 | ✅ 正常 | `get_portfolio(asset: "BGB")` 正确过滤 |
-| MCP ping | ✅ 正常 | 返回空结果 |
-| MCP Token 生成 | ✅ 正常 | 自定义名称 + 权限级别选择器 |
-| MCP Token 撤销 | ✅ 正常 | Revoke 按钮 → 标记 revoked → MCP 拒绝该 token |
+| MCP Token 管理 | ✅ 正常 | 自定义名称 + 权限级别 + Revoke |
 | 匿名化权限 | ✅ 正常 | anonymized token 的 USD 值全部替换为 `$***` |
-| MCP 鉴权拒绝 | ✅ 正常 | 无 token / 无效 token / 已撤销 token 均返回正确错误 |
-| 安全加固 | ✅ 已实施 | 7 种安全响应头全部验证（curl -I） |
-| 速率限制 | ✅ 已实施 | 各端点独立限制 |
-| 输入校验 | ✅ 已实施 | API key/secret/passphrase/UUID/token name 全校验 |
-| 错误脱敏 | ✅ 已实施 | 原始 CCXT 错误不泄露给客户端 |
-| 前端完整流程 | ✅ 正常 | 登录→连接交易所→查看portfolio→生成MCP token→MCP调用 |
+| MCP 鉴权拒绝 | ✅ 正常 | 无/无效/已撤销 token 均正确拒绝 |
+| 安全加固 | ✅ 已实施 | 7 种安全响应头、速率限制、输入校验、错误脱敏 |
+| 前端 Light Theme | ✅ 完成 | 全站白色主题，浏览器验证 |
+| 钱包追踪 (V1.1) | ✅ 代码就绪 | 5 条 EVM 链支持，需实际钱包地址测试 |
+
+### V1.1 新增功能
+
+#### Light Theme
+- 全站从暗色主题转为白色主题
+- 修改文件：globals.css, layout.tsx, page.tsx, login, signup, dashboard
+- 配色：白色背景 + 灰色文字 + emerald 强调色
+
+#### 链上钱包追踪
+- **支持链**：Ethereum, BSC, Polygon, Arbitrum, Base（EVM only）
+- **工作原理**：输入钱包地址 → 读取链上余额（原生代币 + ERC-20）→ CoinGecko 定价 → 聚合到 portfolio context
+- **技术栈**：viem multicall + CoinGecko Free API + 公共 RPC
+- **零成本**：无需 API key，使用公共 RPC 和 CoinGecko 免费端点
+- **安全**：只读取公开的链上余额，不需要私钥或签名
+- **新增文件**：
+  - `src/lib/chains.ts` — 链配置 + Token 列表
+  - `src/lib/wallet.ts` — 余额获取 + 定价
+  - `src/app/api/wallet/connect/route.ts` — 添加钱包
+  - `src/app/api/wallet/disconnect/route.ts` — 移除钱包
+  - `src/app/api/wallet/portfolio/route.ts` — 钱包 portfolio
+- **数据库**：wallets 表（已在 Supabase 创建，含 RLS 策略）
+- **MCP 整合**：钱包数据自动聚合到 get_portfolio 和 get_context
+- **Dashboard**：钱包区块（添加/移除/展示），与交易所区块并列
 
 ### ⏳ 待用户验收
 
 | 功能 | 说明 |
 |------|------|
-| 其他 9 家交易所 | 代码已就绪并经代码审查，需要各交易所 API key 实际测试 |
-| 多交易所聚合 | 代码已就绪（context.ts 聚合逻辑），需要多个交易所 API key |
+| 其他 9 家交易所 | 代码已就绪，需各交易所 API key 实际测试 |
+| 钱包追踪 | 代码已就绪，需输入实际钱包地址测试 |
+| 多源聚合 | 交易所 + 钱包聚合逻辑已就绪，需多数据源实测 |
 
 ### 🔧 已知限制
 
-1. **ENCRYPTION_KEY 敏感**：Vercel 环境变量必须精确 64 位 hex，设置时用 `printf '%s'` 不能用 `echo`（echo 会加换行符导致 66 字符）
-2. **速率限制是内存级**：Vercel Serverless 每个实例独立，重启后重置。对 Hobby plan 足够，Scale 需要换 Redis
-3. **get_context 工具**：V1 返回全量 portfolio，语义检索待 V1.1 实现
-4. **mcp_tokens 缺少 UPDATE RLS**：已通过 service role client 绕过，schema.sql 已更新供新部署使用
-
-## 最近修复
-
-### MCP Token 管理完善（已完成）
-- Token 创建 UI：自定义名称 + 权限级别选择器（full / portfolio_only / anonymized）
-- PATCH /api/mcp/tokens：撤销端点，使用 service role client 绕过 RLS
-- Dashboard：Revoke 按钮 + revoked 状态显示
-- 修复浏览器自动填充干扰 API key 输入框
-
-### Bitget 连接失败（已修复）
-- **根因**：Vercel 上 ENCRYPTION_KEY 环境变量被 `echo` 加了换行符（66 字符而非 64），导致 AES-256-GCM 加密失败
-- **修复**：用 `printf '%s'` 重新设置环境变量
-- **额外改进**：CCXT Bitget 实例加了 `broker: "ccxt"` 配置
-
-### 安全加固（已完成）
-- 新增 `src/lib/security.ts`：速率限制、输入校验、错误脱敏、安全响应头
-- 所有 API 端点加了速率限制和输入校验
-- 错误信息脱敏：不向客户端泄露原始 CCXT 错误
-- 中间件注入 7 种安全响应头（CSP, HSTS, X-Frame-Options 等）
-
-### Vercel 超时优化（已完成）
-- connect 端点不再同步拉取 portfolio（拆分为两步）
-- 各端点 `maxDuration`：connect 30s, portfolio 60s, MCP 60s
+1. **ENCRYPTION_KEY 敏感**：Vercel 环境变量必须精确 64 位 hex，设置时用 `printf '%s'`
+2. **速率限制是内存级**：Vercel Serverless 每个实例独立，重启后重置
+3. **get_context 工具**：V1 返回全量 portfolio，语义检索待后续
+4. **CoinGecko 免费限制**：30 次/分钟，大量钱包可能触发限流
+5. **ERC-20 覆盖**：每条链预置 3-6 种主流代币，长尾代币需手动添加
+6. **公共 RPC**：使用 viem 默认公共 RPC，高并发可能不稳定
 
 ## 基础设施
 
@@ -87,18 +83,30 @@
 | SUPABASE_SERVICE_ROLE_KEY | ✅ 已设置 |
 | ENCRYPTION_KEY | ✅ 已修复（64 位 hex，production + preview） |
 
+## 数据库表
+
+| 表 | 用途 | RLS |
+|------|------|-----|
+| connections | 交易所 API key（加密存储）| ✅ SELECT/INSERT/DELETE |
+| snapshots | Portfolio 快照（最新数据）| ✅ SELECT/INSERT/UPDATE |
+| wallets | 链上钱包地址 | ✅ SELECT/INSERT/DELETE |
+| mcp_tokens | MCP 令牌（hash 存储）| ✅ SELECT/INSERT/UPDATE |
+
 ## 下一步
 
 ### 短期（用户验收）
 - 用户提供其他交易所 API key 实际测试连接
+- 用户提供钱包地址测试链上追踪
 - 确定产品正式名称和自定义域名
 
-### 中期（V1.1）
-- get_context 工具增加语义检索
+### 中期
+- get_context 增加语义检索
 - 支持用户自定义投资笔记/thesis
 - portfolio 历史快照和趋势
+- 扩展 ERC-20 Token 列表（用户自定义）
 
 ### 长期（V2）
-- DEX/链上资产支持
+- DEX 交易历史追踪
 - 多用户共享 context（团队版）
 - 更多 MCP 工具（交易历史、PnL 分析）
+- 非 EVM 链支持（Solana, Sui 等）

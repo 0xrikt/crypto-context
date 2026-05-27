@@ -22,6 +22,17 @@ create table if not exists snapshots (
   created_at timestamptz default now() not null
 );
 
+-- Wallet addresses (on-chain, EVM)
+create table if not exists wallets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  address text not null,
+  chain text not null,
+  label text not null default '',
+  created_at timestamptz default now() not null,
+  unique(user_id, address, chain)
+);
+
 -- MCP tokens (hashed, not stored in plaintext)
 create table if not exists mcp_tokens (
   id uuid primary key default gen_random_uuid(),
@@ -36,6 +47,7 @@ create table if not exists mcp_tokens (
 -- RLS policies
 alter table connections enable row level security;
 alter table snapshots enable row level security;
+alter table wallets enable row level security;
 alter table mcp_tokens enable row level security;
 
 -- Users can only see their own data
@@ -53,6 +65,13 @@ create policy "Users insert own snapshots" on snapshots
 create policy "Users update own snapshots" on snapshots
   for update using (auth.uid() = user_id);
 
+create policy "Users read own wallets" on wallets
+  for select using (auth.uid() = user_id);
+create policy "Users insert own wallets" on wallets
+  for insert with check (auth.uid() = user_id);
+create policy "Users delete own wallets" on wallets
+  for delete using (auth.uid() = user_id);
+
 create policy "Users read own tokens" on mcp_tokens
   for select using (auth.uid() = user_id);
 create policy "Users insert own tokens" on mcp_tokens
@@ -66,4 +85,5 @@ create policy "Users update own tokens" on mcp_tokens
 -- Indexes
 create index if not exists idx_connections_user on connections(user_id);
 create index if not exists idx_snapshots_connection on snapshots(connection_id);
+create index if not exists idx_wallets_user on wallets(user_id);
 create index if not exists idx_mcp_tokens_hash on mcp_tokens(token_hash) where not revoked;

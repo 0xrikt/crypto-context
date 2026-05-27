@@ -10,23 +10,23 @@ export default function Home() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
-          <span className="text-lg font-semibold tracking-tight">CryptoContext</span>
+          <span className="text-lg font-semibold tracking-tight text-gray-900">CryptoContext</span>
         </div>
         <div className="flex items-center gap-3">
           <Link
             href="/login"
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition"
+            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition"
           >
             Log in
           </Link>
           <Link
             href="/signup"
-            className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition shadow-lg shadow-emerald-900/20"
+            className="px-4 py-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition shadow-lg shadow-emerald-200/50"
           >
             Get started
           </Link>
@@ -37,30 +37,30 @@ export default function Home() {
       <main className="relative z-10">
         <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 sm:pt-28 sm:pb-24">
           <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-400 mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-xs text-emerald-700 mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               MCP-native protocol
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1]">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] text-gray-900">
               Every AI tool already
               <br />
               knows{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">
                 what you hold.
               </span>
             </h1>
 
-            <p className="mt-6 text-lg text-zinc-400 max-w-xl leading-relaxed">
-              Connect your exchanges once. CryptoContext structures your portfolio
-              into a personal context layer that any AI agent can query via MCP —
-              so you never explain your positions again.
+            <p className="mt-6 text-lg text-gray-500 max-w-xl leading-relaxed">
+              Connect your exchanges and wallets once. CryptoContext structures
+              your full portfolio into a personal context layer that any AI agent
+              can query via MCP — so you never explain your positions again.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-4">
               <Link
                 href="/signup"
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-900/30 flex items-center gap-2"
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-200/50 flex items-center gap-2"
               >
                 Connect your first exchange
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -69,7 +69,7 @@ export default function Home() {
               </Link>
               <a
                 href="#how-it-works"
-                className="px-6 py-3 border border-zinc-700 hover:border-zinc-500 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition"
+                className="px-6 py-3 border border-gray-200 hover:border-gray-400 rounded-lg text-sm text-gray-500 hover:text-gray-900 transition"
               >
                 How it works
               </a>
@@ -80,13 +80,13 @@ export default function Home() {
           <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { value: "$0", label: "Monthly cost" },
-              { value: "10", label: "Exchanges supported" },
+              { value: "10+5", label: "Exchanges + chains" },
               { value: "<1s", label: "Context generation" },
               { value: "AES-256", label: "Encryption standard" },
             ].map((stat) => (
               <div key={stat.label} className="glass rounded-xl p-4 text-center">
-                <div className="text-xl sm:text-2xl font-bold text-emerald-400">{stat.value}</div>
-                <div className="text-xs text-zinc-500 mt-1">{stat.label}</div>
+                <div className="text-xl sm:text-2xl font-bold text-emerald-600">{stat.value}</div>
+                <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -95,8 +95,8 @@ export default function Home() {
         {/* How it works */}
         <section id="how-it-works" className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold">How it works</h2>
-            <p className="mt-3 text-zinc-500 text-sm">Three steps to give every AI agent your full portfolio context.</p>
+            <h2 className="text-3xl font-bold text-gray-900">How it works</h2>
+            <p className="mt-3 text-gray-400 text-sm">Three steps to give every AI agent your full portfolio context.</p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-6">
@@ -132,13 +132,13 @@ export default function Home() {
                 ),
               },
             ].map((item) => (
-              <div key={item.step} className="glass rounded-xl p-6 hover:border-zinc-600 transition group">
-                <div className="w-12 h-12 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition">
+              <div key={item.step} className="glass rounded-xl p-6 hover:border-gray-300 transition group">
+                <div className="w-12 h-12 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 group-hover:bg-emerald-100 transition">
                   {item.icon}
                 </div>
-                <div className="text-xs text-zinc-600 font-mono mb-2">{item.step}</div>
-                <h3 className="font-semibold text-zinc-100">{item.title}</h3>
-                <p className="mt-2 text-sm text-zinc-400 leading-relaxed">{item.desc}</p>
+                <div className="text-xs text-gray-300 font-mono mb-2">{item.step}</div>
+                <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                <p className="mt-2 text-sm text-gray-500 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -147,29 +147,29 @@ export default function Home() {
         {/* Code block */}
         <section className="max-w-6xl mx-auto px-6 py-16">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-center">One command to connect</h2>
-            <p className="mt-3 text-center text-zinc-500 text-sm">Works with Claude Code, Cursor, and any MCP-compatible agent.</p>
+            <h2 className="text-3xl font-bold text-center text-gray-900">One command to connect</h2>
+            <p className="mt-3 text-center text-gray-400 text-sm">Works with Claude Code, Cursor, and any MCP-compatible agent.</p>
 
             <div className="code-block mt-8 rounded-xl overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800/50">
-                <span className="w-3 h-3 rounded-full bg-zinc-700" />
-                <span className="w-3 h-3 rounded-full bg-zinc-700" />
-                <span className="w-3 h-3 rounded-full bg-zinc-700" />
-                <span className="ml-3 text-xs text-zinc-600 font-mono">terminal</span>
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
+                <span className="w-3 h-3 rounded-full bg-gray-300" />
+                <span className="w-3 h-3 rounded-full bg-gray-300" />
+                <span className="w-3 h-3 rounded-full bg-gray-300" />
+                <span className="ml-3 text-xs text-gray-400 font-mono">terminal</span>
               </div>
               <div className="p-5 font-mono text-sm leading-relaxed overflow-x-auto">
-                <span className="text-emerald-400">$</span>{" "}
-                <span className="text-zinc-300">claude mcp add</span>{" "}
-                <span className="text-zinc-500">--transport</span>{" "}
-                <span className="text-teal-300">http</span>{" "}
-                <span className="text-zinc-300">crypto-ctx \</span>
+                <span className="text-emerald-600">$</span>{" "}
+                <span className="text-gray-700">claude mcp add</span>{" "}
+                <span className="text-gray-400">--transport</span>{" "}
+                <span className="text-teal-600">http</span>{" "}
+                <span className="text-gray-700">crypto-ctx \</span>
                 <br />
                 {"  "}
-                <span className="text-yellow-300/80">https://your-app.vercel.app/api/mcp</span>{" "}
-                <span className="text-zinc-500">--header</span>{" "}
-                <span className="text-zinc-300">&quot;Authorization: Bearer</span>{" "}
-                <span className="text-emerald-300/80">YOUR_TOKEN</span>
-                <span className="text-zinc-300">&quot;</span>
+                <span className="text-amber-600">https://your-app.vercel.app/api/mcp</span>{" "}
+                <span className="text-gray-400">--header</span>{" "}
+                <span className="text-gray-700">&quot;Authorization: Bearer</span>{" "}
+                <span className="text-emerald-600">YOUR_TOKEN</span>
+                <span className="text-gray-700">&quot;</span>
               </div>
             </div>
           </div>
@@ -180,14 +180,14 @@ export default function Home() {
           <div className="glass rounded-xl p-8 sm:p-10">
             <div className="flex flex-col sm:flex-row sm:items-start gap-8">
               <div className="flex-1">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-400 mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-xs text-emerald-700 mb-4">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                   </svg>
                   Security first
                 </div>
-                <h2 className="text-2xl font-bold">Your keys, your control</h2>
-                <p className="mt-3 text-sm text-zinc-400 max-w-md leading-relaxed">
+                <h2 className="text-2xl font-bold text-gray-900">Your keys, your control</h2>
+                <p className="mt-3 text-sm text-gray-500 max-w-md leading-relaxed">
                   We take a read-only approach to your exchange data. Your API keys are encrypted at rest and we can never execute trades.
                 </p>
               </div>
@@ -199,12 +199,12 @@ export default function Home() {
                   { text: "Delete all your data anytime", icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" },
                 ].map((item) => (
                   <div key={item.text} className="flex items-center gap-3 text-sm">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                       </svg>
                     </div>
-                    <span className="text-zinc-300">{item.text}</span>
+                    <span className="text-gray-700">{item.text}</span>
                   </div>
                 ))}
               </div>
@@ -214,19 +214,19 @@ export default function Home() {
 
         {/* CTA */}
         <section className="max-w-6xl mx-auto px-6 py-20 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold">
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
             Ready to give your AI agents{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-300">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">
               portfolio context
             </span>
             ?
           </h2>
-          <p className="mt-4 text-zinc-500 max-w-md mx-auto text-sm">
+          <p className="mt-4 text-gray-400 max-w-md mx-auto text-sm">
             Free forever. Connect your first exchange in under 2 minutes.
           </p>
           <Link
             href="/signup"
-            className="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-900/30"
+            className="mt-8 inline-flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-200/50"
           >
             Get started — it&apos;s free
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -237,17 +237,17 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-800/50 py-8">
+      <footer className="relative z-10 border-t border-gray-200 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-zinc-600">
-            <div className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center">
-              <svg className="w-3 h-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="w-5 h-5 rounded bg-emerald-50 flex items-center justify-center">
+              <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
             CryptoContext
           </div>
-          <div className="text-xs text-zinc-700">
+          <div className="text-xs text-gray-300">
             Your portfolio context, everywhere.
           </div>
         </div>

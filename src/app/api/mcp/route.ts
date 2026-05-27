@@ -12,6 +12,8 @@ import { createHash } from "crypto";
 import { createServerClient } from "@supabase/ssr";
 import { decrypt } from "@/lib/crypto";
 import { fetchPortfolio, type SupportedExchange, type ExchangeCredentials, type PortfolioSnapshot } from "@/lib/exchange";
+import { fetchWalletPortfolio, type WalletSnapshot } from "@/lib/wallet";
+import type { SupportedChain } from "@/lib/chains";
 import { generatePortfolioContext } from "@/lib/context";
 import { checkRateLimit, RATE_LIMITS, getClientIp } from "@/lib/security";
 
@@ -142,6 +144,38 @@ async function fetchAllPortfolios(
   return snapshots;
 }
 
+async function fetchAllWallets(
+  userId: string
+): Promise<WalletSnapshot[]> {
+  const supabase = createServiceClient();
+
+  const { data: wallets } = await supabase
+    .from("wallets")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (!wallets || wallets.length === 0) return [];
+
+  const snapshots: WalletSnapshot[] = [];
+
+  for (const w of wallets) {
+    try {
+      const snapshot = await fetchWalletPortfolio(
+        w.address as `0x${string}`,
+        w.chain as SupportedChain
+      );
+      snapshots.push(snapshot);
+    } catch (err) {
+      console.error(
+        `[MCP] Wallet fetch failed: chain=${w.chain}`,
+        err instanceof Error ? err.message : "unknown"
+      );
+    }
+  }
+
+  return snapshots;
+}
+
 function handleListTools(): McpTool[] {
   return TOOLS;
 }
@@ -152,8 +186,11 @@ async function handleCallTool(
   userId: string,
   permissionLevel: string
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
-  const snapshots = await fetchAllPortfolios(userId);
-  const portfolioMd = generatePortfolioContext(snapshots);
+  const [snapshots, walletSnapshots] = await Promise.all([
+    fetchAllPortfolios(userId),
+    fetchAllWallets(userId),
+  ]);
+  const portfolioMd = generatePortfolioContext(snapshots, walletSnapshots);
 
   if (toolName === "get_portfolio") {
     const asset = args.asset as string | undefined;

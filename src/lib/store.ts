@@ -5,6 +5,7 @@
 import { createClient } from "./supabase/server";
 import { encrypt, decrypt } from "./crypto";
 import type { SupportedExchange, ExchangeCredentials } from "./exchange";
+import type { SupportedChain } from "./chains";
 
 // ---------- Types ----------
 
@@ -35,6 +36,63 @@ export interface McpToken {
   permission_level: "full" | "portfolio_only" | "anonymized";
   revoked: boolean;
   created_at: string;
+}
+
+export interface StoredWallet {
+  id: string;
+  user_id: string;
+  address: string;
+  chain: SupportedChain;
+  label: string;
+  created_at: string;
+}
+
+// ---------- Wallets ----------
+
+export async function saveWallet(
+  userId: string,
+  address: string,
+  chain: SupportedChain,
+  label: string
+): Promise<string> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("wallets")
+    .insert({ user_id: userId, address: address.toLowerCase(), chain, label })
+    .select("id")
+    .single();
+
+  if (error) throw new Error(`Failed to save wallet: ${error.message}`);
+  return data.id;
+}
+
+export async function getWallets(userId: string): Promise<StoredWallet[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("wallets")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(`Failed to get wallets: ${error.message}`);
+  return data ?? [];
+}
+
+export async function deleteWallet(
+  walletId: string,
+  userId: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("wallets")
+    .delete()
+    .eq("id", walletId)
+    .eq("user_id", userId);
+
+  if (error) throw new Error(`Failed to delete wallet: ${error.message}`);
 }
 
 // ---------- Connections ----------

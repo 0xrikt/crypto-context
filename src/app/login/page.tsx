@@ -61,66 +61,66 @@ function LoginForm() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           </div>
-          <span className="text-lg font-semibold tracking-tight">CryptoContext</span>
+          <span className="text-lg font-semibold tracking-tight text-gray-900">CryptoContext</span>
         </div>
 
         {/* Card */}
         <div className="glass rounded-xl p-6 sm:p-8">
-          <h1 className="text-xl font-bold text-center">Welcome back</h1>
-          <p className="mt-1 text-sm text-zinc-500 text-center">
+          <h1 className="text-xl font-bold text-center text-gray-900">Welcome back</h1>
+          <p className="mt-1 text-sm text-gray-400 text-center">
             Log in to your account
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5">Email</label>
+              <label className="block text-sm text-gray-500 mb-1.5">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full px-3.5 py-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
               />
             </div>
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5">Password</label>
+              <label className="block text-sm text-gray-500 mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 bg-zinc-900/80 border border-zinc-700/50 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
               />
             </div>
 
             {success && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                <svg className="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-sm text-emerald-400">{success}</p>
+                <p className="text-sm text-emerald-700">{success}</p>
               </div>
             )}
             {error && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
                 </svg>
-                <p className="text-sm text-red-400">{error}</p>
+                <p className="text-sm text-red-600">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-900/20 mt-2"
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-200/50 mt-2"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -137,9 +137,9 @@ function LoginForm() {
           </form>
         </div>
 
-        <p className="mt-6 text-sm text-zinc-500 text-center">
+        <p className="mt-6 text-sm text-gray-400 text-center">
           No account?{" "}
-          <Link href="/signup" className="text-emerald-400 hover:text-emerald-300 transition">
+          <Link href="/signup" className="text-emerald-600 hover:text-emerald-500 transition">
             Sign up
           </Link>
         </p>
