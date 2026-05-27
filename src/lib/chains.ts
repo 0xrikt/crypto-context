@@ -2,6 +2,8 @@ import { type Chain, mainnet, bsc, polygon, arbitrum, base } from "viem/chains";
 
 export interface ChainConfig {
   chain: Chain;
+  /** Explicit RPC URL — cloud-friendly, avoids slow/blocked defaults */
+  rpcUrl: string;
   nativeSymbol: string;
   coingeckoPlatformId: string;
   tokens: TokenConfig[];
@@ -31,6 +33,7 @@ export type SupportedChain = "ethereum" | "bsc" | "polygon" | "arbitrum" | "base
 export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   ethereum: {
     chain: mainnet,
+    rpcUrl: "https://ethereum-rpc.publicnode.com",
     nativeSymbol: "ETH",
     coingeckoPlatformId: "ethereum",
     tokens: [
@@ -44,6 +47,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   },
   bsc: {
     chain: bsc,
+    rpcUrl: "https://bsc-rpc.publicnode.com",
     nativeSymbol: "BNB",
     coingeckoPlatformId: "binance-smart-chain",
     tokens: [
@@ -55,6 +59,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   },
   polygon: {
     chain: polygon,
+    rpcUrl: "https://polygon-bor-rpc.publicnode.com",
     nativeSymbol: "POL",
     coingeckoPlatformId: "polygon-pos",
     tokens: [
@@ -66,6 +71,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   },
   arbitrum: {
     chain: arbitrum,
+    rpcUrl: "https://arbitrum-one-rpc.publicnode.com",
     nativeSymbol: "ETH",
     coingeckoPlatformId: "arbitrum-one",
     tokens: [
@@ -77,6 +83,7 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   },
   base: {
     chain: base,
+    rpcUrl: "https://base-rpc.publicnode.com",
     nativeSymbol: "ETH",
     coingeckoPlatformId: "base",
     tokens: [

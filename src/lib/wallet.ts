@@ -75,7 +75,7 @@ export async function fetchWalletPortfolio(
   const config = CHAIN_CONFIGS[chain];
   const client = createPublicClient({
     chain: config.chain,
-    transport: http(undefined, { timeout: FETCH_TIMEOUT_MS }),
+    transport: http(config.rpcUrl, { timeout: FETCH_TIMEOUT_MS }),
   });
 
   const holdings: WalletHolding[] = [];
