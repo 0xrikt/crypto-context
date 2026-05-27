@@ -8,8 +8,44 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { verifyReadOnly, fetchPortfolio, PASSPHRASE_EXCHANGES, type SupportedExchange } from "@/lib/exchange";
 import { saveConnection, saveSnapshot } from "@/lib/store";
+import {
+  checkRateLimit,
+  RATE_LIMITS,
+  getClientIp,
+  validateApiKey,
+  validateSecret,
+  validatePassphrase,
+  validateLabel,
+  sanitizeExchangeError,
+} from "@/lib/security";
+
+const SUPPORTED_EXCHANGES: SupportedExchange[] = [
+  "binance", "okx", "bybit", "coinbase",
+  "kraken", "bitget", "kucoin", "gateio", "htx", "mexc",
+];
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request.headers);
+  const rateLimit = checkRateLimit(
+    ip,
+    "exchange/connect",
+    RATE_LIMITS.exchangeConnect.maxRequests,
+    RATE_LIMITS.exchangeConnect.windowMs
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        },
+      }
+    );
+  }
+
+  // Auth check
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,50 +55,75 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  // Parse body with size guard
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
   const { exchange, apiKey, secret, password, label } = body as {
-    exchange: SupportedExchange;
+    exchange: string;
     apiKey: string;
     secret: string;
     password?: string;
     label?: string;
   };
 
-  // Validate input
-  const supported: SupportedExchange[] = [
-    "binance", "okx", "bybit", "coinbase",
-    "kraken", "bitget", "kucoin", "gateio", "htx", "mexc",
-  ];
-  if (!supported.includes(exchange)) {
+  // Validate exchange
+  if (!exchange || !SUPPORTED_EXCHANGES.includes(exchange as SupportedExchange)) {
     return NextResponse.json(
-      { error: `Unsupported exchange: ${exchange}. Supported: ${supported.join(", ")}` },
+      { error: "Unsupported exchange. Please select a valid exchange." },
       { status: 400 }
     );
   }
 
-  if (!apiKey || !secret) {
-    return NextResponse.json(
-      { error: "apiKey and secret are required" },
-      { status: 400 }
-    );
+  const exchangeId = exchange as SupportedExchange;
+
+  // Validate API key
+  const keyError = validateApiKey(apiKey);
+  if (keyError) {
+    return NextResponse.json({ error: keyError }, { status: 400 });
   }
 
-  if (PASSPHRASE_EXCHANGES.includes(exchange) && !password) {
-    const name = exchange.toUpperCase();
-    return NextResponse.json(
-      { error: `${name} requires a passphrase` },
-      { status: 400 }
-    );
+  // Validate secret
+  const secretError = validateSecret(secret);
+  if (secretError) {
+    return NextResponse.json({ error: secretError }, { status: 400 });
+  }
+
+  // Validate passphrase for exchanges that require it
+  if (PASSPHRASE_EXCHANGES.includes(exchangeId)) {
+    if (!password) {
+      return NextResponse.json(
+        { error: `${exchangeId.toUpperCase()} requires a passphrase.` },
+        { status: 400 }
+      );
+    }
+    const passError = validatePassphrase(password);
+    if (passError) {
+      return NextResponse.json({ error: passError }, { status: 400 });
+    }
+  }
+
+  // Validate label
+  if (label) {
+    const labelError = validateLabel(label);
+    if (labelError) {
+      return NextResponse.json({ error: labelError }, { status: 400 });
+    }
   }
 
   // Step 1: Verify key is valid and read-only
-  const verification = await verifyReadOnly(exchange, {
-    apiKey,
-    secret,
-    password,
+  const verification = await verifyReadOnly(exchangeId, {
+    apiKey: apiKey.trim(),
+    secret: secret.trim(),
+    password: password?.trim(),
   });
 
   if (!verification.valid) {
+    // verifyReadOnly already returns sanitized error messages
     return NextResponse.json(
       { error: verification.error ?? "Invalid API key" },
       { status: 400 }
@@ -72,17 +133,17 @@ export async function POST(request: NextRequest) {
   // Step 2: Save encrypted connection
   const connectionId = await saveConnection(
     user.id,
-    exchange,
-    { apiKey, secret, password },
-    label ?? `${exchange} account`
+    exchangeId,
+    { apiKey: apiKey.trim(), secret: secret.trim(), password: password?.trim() },
+    label?.trim() ?? `${exchangeId} account`
   );
 
   // Step 3: Fetch initial portfolio
   try {
-    const snapshot = await fetchPortfolio(exchange, {
-      apiKey,
-      secret,
-      password,
+    const snapshot = await fetchPortfolio(exchangeId, {
+      apiKey: apiKey.trim(),
+      secret: secret.trim(),
+      password: password?.trim(),
     });
     await saveSnapshot(user.id, connectionId, snapshot);
 
@@ -95,7 +156,7 @@ export async function POST(request: NextRequest) {
         holdingsCount: snapshot.holdings.length,
       },
     });
-  } catch (err) {
+  } catch {
     // Connection saved but initial fetch failed — that's OK
     return NextResponse.json({
       success: true,

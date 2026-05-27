@@ -4,6 +4,7 @@
  */
 
 import ccxt, { type Exchange, type Balances } from "ccxt";
+import { sanitizeExchangeError } from "./security";
 
 export type SupportedExchange =
   | "binance"
@@ -54,6 +55,24 @@ const EXCHANGE_CLASSES: Record<SupportedExchange, new (config: object) => Exchan
   mexc: ccxt.mexc,
 };
 
+/**
+ * Exchange-specific options for CCXT initialization.
+ * Some exchanges need different config for their V2 APIs or specific account types.
+ */
+const EXCHANGE_OPTIONS: Partial<Record<SupportedExchange, object>> = {
+  bitget: {
+    defaultType: "spot",
+    broker: "ccxt",
+  },
+  okx: {
+    defaultType: "spot",
+  },
+  kucoin: {
+    defaultType: "spot",
+    versions: { public: { GET: { "api/v1/timestamp": "v1" } } },
+  },
+};
+
 function createExchangeInstance(
   exchangeId: SupportedExchange,
   credentials: ExchangeCredentials
@@ -63,19 +82,22 @@ function createExchangeInstance(
     throw new Error(`Unsupported exchange: ${exchangeId}`);
   }
 
+  const exchangeOptions = EXCHANGE_OPTIONS[exchangeId] ?? { defaultType: "spot" };
+
   return new ExchangeClass({
     apiKey: credentials.apiKey,
     secret: credentials.secret,
     password: credentials.password,
     enableRateLimit: true,
-    options: { defaultType: "spot" },
+    timeout: 15000, // 15s timeout to avoid Vercel function timeout
+    options: exchangeOptions,
   });
 }
 
 /**
  * Verify that API key has ONLY read permissions.
- * Attempts a small test trade that should fail with permission error.
- * Returns true if key is read-only, false if it can trade.
+ * Calls fetchBalance to confirm key can read.
+ * Returns sanitized error messages — NEVER raw CCXT errors.
  */
 export async function verifyReadOnly(
   exchangeId: SupportedExchange,
@@ -84,32 +106,24 @@ export async function verifyReadOnly(
   try {
     const exchange = createExchangeInstance(exchangeId, credentials);
 
-    // First test: can we read balances? (should succeed)
+    // Test: can we read balances? (should succeed for valid read-only keys)
     await exchange.fetchBalance();
 
-    // Key is valid and can read. That's all we need to confirm.
-    // We don't attempt a write operation — exchange-side permission
-    // enforcement is the real guard (Binance returns 403 on trade
-    // endpoints when key is read-only).
+    // Key is valid and can read. Exchange-side permission enforcement
+    // is the real guard against trade/withdraw operations.
     return { valid: true, readOnly: true };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const rawMessage = err instanceof Error ? err.message : String(err);
 
-    // Auth errors = invalid key
-    if (
-      message.includes("Invalid API") ||
-      message.includes("AuthenticationError") ||
-      message.includes("invalid signature")
-    ) {
-      return { valid: false, readOnly: false, error: "Invalid API key or secret" };
-    }
+    // Log raw error server-side for debugging (no credentials!)
+    console.error(`[exchange] verifyReadOnly failed for ${exchangeId}: ${rawMessage}`);
 
-    // Permission errors = key works but can't read (unusual)
-    if (message.includes("PermissionDenied")) {
-      return { valid: false, readOnly: false, error: "Key lacks read permission" };
-    }
-
-    return { valid: false, readOnly: false, error: message };
+    // Return SANITIZED error to client
+    return {
+      valid: false,
+      readOnly: false,
+      error: sanitizeExchangeError(rawMessage, exchangeId),
+    };
   }
 }
 

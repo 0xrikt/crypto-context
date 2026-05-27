@@ -13,6 +13,7 @@ import { createServerClient } from "@supabase/ssr";
 import { decrypt } from "@/lib/crypto";
 import { fetchPortfolio, type SupportedExchange, type ExchangeCredentials, type PortfolioSnapshot } from "@/lib/exchange";
 import { generatePortfolioContext } from "@/lib/context";
+import { checkRateLimit, RATE_LIMITS, getClientIp } from "@/lib/security";
 
 // Use service role for MCP endpoint (no cookie auth needed)
 function createServiceClient() {
@@ -127,9 +128,10 @@ async function fetchAllPortfolios(
       );
       snapshots.push(snapshot);
     } catch (err) {
+      // Log only exchange name and error type — NEVER log credentials
       console.error(
-        `[MCP] Failed to fetch ${conn.exchange} for user ${userId}:`,
-        err instanceof Error ? err.message : err
+        `[MCP] Portfolio fetch failed: exchange=${conn.exchange}`,
+        err instanceof Error ? err.message : "unknown error"
       );
     }
   }
@@ -194,6 +196,30 @@ async function handleCallTool(
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request.headers);
+  const rateLimit = checkRateLimit(
+    ip,
+    "mcp",
+    RATE_LIMITS.mcp.maxRequests,
+    RATE_LIMITS.mcp.windowMs
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Rate limit exceeded" },
+        id: null,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        },
+      }
+    );
+  }
+
   // Authenticate
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -208,6 +234,17 @@ export async function POST(request: NextRequest) {
   }
 
   const token = authHeader.slice(7);
+  if (!token || token.length > 256) {
+    return NextResponse.json(
+      {
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Invalid token format" },
+        id: null,
+      },
+      { status: 401 }
+    );
+  }
+
   const auth = await authenticateToken(token);
 
   if (!auth) {
@@ -286,12 +323,13 @@ export async function POST(request: NextRequest) {
       id,
     });
   } catch (err) {
-    console.error("[MCP] Error:", err);
+    // Log error server-side without leaking details
+    console.error("[MCP] Internal error:", err instanceof Error ? err.message : "unknown");
     return NextResponse.json({
       jsonrpc: "2.0",
       error: {
         code: -32603,
-        message: err instanceof Error ? err.message : "Internal error",
+        message: "Internal server error",
       },
       id,
     });

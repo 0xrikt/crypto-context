@@ -3,13 +3,39 @@
  * Fetch fresh portfolio for the authenticated user.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getConnections, getConnectionCredentials, saveSnapshot } from "@/lib/store";
 import { fetchPortfolio, type PortfolioSnapshot } from "@/lib/exchange";
 import { generatePortfolioContext } from "@/lib/context";
+import {
+  checkRateLimit,
+  RATE_LIMITS,
+  getClientIp,
+  sanitizeExchangeError,
+} from "@/lib/security";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request.headers);
+  const rateLimit = checkRateLimit(
+    ip,
+    "exchange/portfolio",
+    RATE_LIMITS.portfolioFetch.maxRequests,
+    RATE_LIMITS.portfolioFetch.windowMs
+  );
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rateLimit.resetAt - Date.now()) / 1000)),
+        },
+      }
+    );
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -44,9 +70,12 @@ export async function GET() {
       snapshots.push(snapshot);
       await saveSnapshot(user.id, conn.id, snapshot);
     } catch (err) {
+      const rawMessage = err instanceof Error ? err.message : String(err);
+      // Log raw error server-side, return sanitized to client
+      console.error(`[portfolio] Failed to fetch ${conn.exchange}: ${rawMessage}`);
       errors.push({
         exchange: conn.exchange,
-        error: err instanceof Error ? err.message : String(err),
+        error: sanitizeExchangeError(rawMessage, conn.exchange),
       });
     }
   }
