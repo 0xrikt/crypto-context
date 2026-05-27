@@ -41,6 +41,15 @@ export default function DashboardPage() {
   // MCP token
   const [mcpToken, setMcpToken] = useState("");
   const [generatingToken, setGeneratingToken] = useState(false);
+  const [existingTokens, setExistingTokens] = useState<
+    Array<{
+      id: string;
+      name: string;
+      permission_level: string;
+      revoked: boolean;
+      created_at: string;
+    }>
+  >([]);
 
   const fetchPortfolio = useCallback(async () => {
     setSyncing(true);
@@ -79,6 +88,17 @@ export default function DashboardPage() {
 
       if (conns && conns.length > 0) {
         await fetchPortfolio();
+      }
+
+      // Fetch existing MCP tokens
+      try {
+        const tokensRes = await fetch("/api/mcp/tokens");
+        if (tokensRes.ok) {
+          const tokensData = await tokensRes.json();
+          setExistingTokens(tokensData.tokens ?? []);
+        }
+      } catch {
+        // non-critical
       }
 
       setLoading(false);
@@ -396,6 +416,38 @@ export default function DashboardPage() {
                   ? "Connect an exchange first"
                   : "Generate MCP token"}
             </button>
+          )}
+
+          {/* Existing tokens list */}
+          {existingTokens.filter((t) => !t.revoked).length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-zinc-400">
+                Active tokens
+              </h3>
+              <div className="mt-2 space-y-2">
+                {existingTokens
+                  .filter((t) => !t.revoked)
+                  .map((token) => (
+                    <div
+                      key={token.id}
+                      className="flex items-center justify-between p-3 bg-zinc-900 border border-zinc-800 rounded-lg"
+                    >
+                      <div>
+                        <span className="text-sm font-medium">
+                          {token.name}
+                        </span>
+                        <span className="ml-2 text-xs text-zinc-600">
+                          {token.permission_level}
+                        </span>
+                      </div>
+                      <span className="text-xs text-zinc-600">
+                        Created{" "}
+                        {new Date(token.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
           )}
         </section>
       </main>
