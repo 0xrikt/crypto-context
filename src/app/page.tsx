@@ -92,7 +92,7 @@ export default function Home() {
           <div className="mt-6 bg-zinc-900 border border-zinc-800 rounded-lg p-4 font-mono text-sm text-zinc-300 overflow-x-auto">
             <span className="text-zinc-500">$</span> claude mcp add
             --transport http crypto-ctx
-            https://your-app.vercel.app/api/mcp --header
+            https://app-rho-jet-70.vercel.app/api/mcp --header
             &quot;Authorization: Bearer YOUR_TOKEN&quot;
           </div>
           <p className="mt-3 text-sm text-zinc-500">
