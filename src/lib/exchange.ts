@@ -73,7 +73,7 @@ const EXCHANGE_OPTIONS: Partial<Record<SupportedExchange, object>> = {
   },
 };
 
-function createExchangeInstance(
+export function createExchangeInstance(
   exchangeId: SupportedExchange,
   credentials: ExchangeCredentials
 ): Exchange {

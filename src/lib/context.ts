@@ -179,3 +179,54 @@ export function buildUserContext(
     updatedAt: new Date().toISOString(),
   };
 }
+
+export interface ContextDocument {
+  dimension: string;
+  content: string;
+  updated_at: string;
+}
+
+export function generateFullContext(
+  portfolioMd: string,
+  contextDocs: ContextDocument[],
+): string {
+  const sections: string[] = [];
+
+  sections.push("# Crypto Investor Context");
+  sections.push(`> Generated: ${new Date().toISOString()}`);
+  sections.push("");
+
+  // Portfolio (always included, real-time)
+  sections.push(portfolioMd);
+
+  // Group by dimension, append each
+  const tradingProfiles = contextDocs.filter((d) => d.dimension === "trading_profile");
+  const fundFlows = contextDocs.filter((d) => d.dimension === "fund_flow");
+
+  if (tradingProfiles.length > 0) {
+    sections.push("");
+    sections.push("---");
+    sections.push("");
+    for (const doc of tradingProfiles) {
+      sections.push(doc.content);
+    }
+  }
+
+  if (fundFlows.length > 0) {
+    sections.push("");
+    sections.push("---");
+    sections.push("");
+    for (const doc of fundFlows) {
+      sections.push(doc.content);
+    }
+  }
+
+  if (tradingProfiles.length === 0 && fundFlows.length === 0) {
+    sections.push("");
+    sections.push("---");
+    sections.push("");
+    sections.push("*Trading profile and fund flow analysis not yet available. Sync your exchange to generate.*");
+  }
+
+  return sections.join("\n");
+}

@@ -14,7 +14,7 @@ import { decrypt } from "@/lib/crypto";
 import { fetchPortfolio, type SupportedExchange, type ExchangeCredentials, type PortfolioSnapshot } from "@/lib/exchange";
 import { fetchWalletPortfolio, type WalletSnapshot } from "@/lib/wallet";
 import type { SupportedChain } from "@/lib/chains";
-import { generatePortfolioContext } from "@/lib/context";
+import { generatePortfolioContext, generateFullContext, type ContextDocument } from "@/lib/context";
 import { checkRateLimit, RATE_LIMITS, getClientIp } from "@/lib/security";
 
 /** MCP fetches across all connected exchanges — needs more time */
@@ -69,16 +69,15 @@ const TOOLS: McpTool[] = [
   {
     name: "get_context",
     description:
-      "Get relevant crypto context for a query. Analyzes the query and returns the most relevant slices of the user's portfolio, trading profile, and market position.",
+      "Get the user's full crypto investor profile. Returns current portfolio snapshot, trading patterns and style analysis, and fund flow (deposits/withdrawals). All dimensions are included by default.",
     inputSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "The question or topic to get context for",
+          description: "Optional: the question or topic you need context for",
         },
       },
-      required: ["query"],
     },
   },
 ];
@@ -219,9 +218,20 @@ async function handleCallTool(
   }
 
   if (toolName === "get_context") {
-    // For V1, return full portfolio context for any query.
-    // V2 will add semantic retrieval based on the query.
-    let result = portfolioMd;
+    // Fetch cached context documents (trading profile, fund flow)
+    const supabase = createServiceClient();
+    const { data: contextDocs } = await supabase
+      .from("context_documents")
+      .select("dimension, content, updated_at")
+      .eq("user_id", userId);
+
+    const docs: ContextDocument[] = (contextDocs ?? []).map((d) => ({
+      dimension: d.dimension as string,
+      content: d.content as string,
+      updated_at: d.updated_at as string,
+    }));
+
+    let result = generateFullContext(portfolioMd, docs);
 
     if (permissionLevel === "anonymized") {
       result = result.replace(/\$[\d,]+/g, "$***");

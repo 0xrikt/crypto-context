@@ -38,3 +38,35 @@ Wallet data not appearing in portfolio context. Multiple cascading issues.
 5. Return partial results on failure
 6. Make UI non-blocking — show structure first, data later
 ```
+
+---
+
+## 2026-05-28: MCP Registration in Claude Code
+
+### Problem
+User had an MCP token in the dashboard but assumed the MCP was already connected to Claude Code. It was not — having a token ≠ having the MCP registered.
+
+### Key Insight
+MCP token is the "key", but it still needs to be registered in Claude Code via `claude mcp add`. These are two separate steps:
+1. **Generate token** — done in the CryptoContext dashboard (creates auth credential)
+2. **Register MCP** — done via CLI `claude mcp add` (tells Claude Code where the server is and how to authenticate)
+
+### Registration Command
+```bash
+claude mcp add -t http -s user \
+  -H "Authorization: Bearer <TOKEN>" \
+  -- crypto-ctx https://app-rho-jet-70.vercel.app/api/mcp
+```
+
+### Gotcha: Tools not available mid-session
+MCP tools are loaded at **session startup**. If you register a new MCP mid-session, the tools won't appear until the next session. Workaround: call the MCP endpoint directly via curl/JSON-RPC 2.0 for immediate testing.
+
+### Pattern: MCP Deployment Checklist
+```
+1. Deploy MCP endpoint (JSON-RPC 2.0)
+2. Generate auth token in dashboard
+3. Register with `claude mcp add` (user scope for personal, project scope for team)
+4. Verify: `claude mcp list` → should show ✓ Connected
+5. Start new session to get tools loaded
+6. Test: call get_portfolio / get_context from Claude Code
+```

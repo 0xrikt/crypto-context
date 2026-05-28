@@ -82,8 +82,33 @@ create policy "Users update own tokens" on mcp_tokens
 -- Service role needs to read tokens for MCP auth (no RLS bypass needed for service role)
 -- The service role key automatically bypasses RLS
 
+-- Context documents (V2: multi-dimensional investor profile)
+create table if not exists context_documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  connection_id uuid references connections(id) on delete cascade not null,
+  dimension text not null,
+  content text not null,
+  metadata jsonb default '{}' not null,
+  updated_at timestamptz default now() not null,
+  unique(connection_id, dimension)
+);
+
+alter table context_documents enable row level security;
+
+create policy "Users read own context_documents" on context_documents
+  for select using (auth.uid() = user_id);
+create policy "Users insert own context_documents" on context_documents
+  for insert with check (auth.uid() = user_id);
+create policy "Users update own context_documents" on context_documents
+  for update using (auth.uid() = user_id);
+create policy "Users delete own context_documents" on context_documents
+  for delete using (auth.uid() = user_id);
+
 -- Indexes
 create index if not exists idx_connections_user on connections(user_id);
 create index if not exists idx_snapshots_connection on snapshots(connection_id);
 create index if not exists idx_wallets_user on wallets(user_id);
 create index if not exists idx_mcp_tokens_hash on mcp_tokens(token_hash) where not revoked;
+create index if not exists idx_context_docs_user on context_documents(user_id);
+create index if not exists idx_context_docs_conn_dim on context_documents(connection_id, dimension);

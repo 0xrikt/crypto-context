@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [contextSyncing, setContextSyncing] = useState(false);
 
   // Connect exchange form
   const [showConnect, setShowConnect] = useState(false);
@@ -87,6 +88,24 @@ export default function DashboardPage() {
       }
     } finally {
       setSyncing(false);
+    }
+  }, []);
+
+  const syncContext = useCallback(async (connectionId: string) => {
+    setContextSyncing(true);
+    try {
+      const res = await fetch("/api/exchange/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ connectionId }),
+      });
+      if (!res.ok) {
+        console.error("[sync] Context sync failed:", res.status);
+      }
+    } catch {
+      console.error("[sync] Context sync network error");
+    } finally {
+      setContextSyncing(false);
     }
   }, []);
 
@@ -175,6 +194,11 @@ export default function DashboardPage() {
 
       // Auto-fetch portfolio (deferred from connect to avoid timeout)
       fetchPortfolio();
+
+      // Trigger context sync in background (non-blocking)
+      if (data.connectionId) {
+        syncContext(data.connectionId);
+      }
     } catch {
       setConnectError("Something went wrong");
     } finally {
@@ -718,7 +742,12 @@ export default function DashboardPage() {
                 </p>
               </div>
               <button
-                onClick={fetchPortfolio}
+                onClick={() => {
+                  fetchPortfolio();
+                  for (const conn of connections) {
+                    syncContext(conn.id);
+                  }
+                }}
                 disabled={syncing}
                 className="px-3 py-1.5 text-xs border border-gray-200 hover:border-gray-400 rounded-lg text-gray-400 hover:text-gray-700 disabled:opacity-50 transition flex items-center gap-2"
               >
@@ -739,6 +768,15 @@ export default function DashboardPage() {
                   </>
                 )}
               </button>
+              {contextSyncing && (
+                <span className="text-xs text-gray-400 flex items-center gap-1">
+                  <svg className="animate-spin w-3 h-3" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Syncing context...
+                </span>
+              )}
             </div>
 
             <div className="mt-4 code-block rounded-xl overflow-hidden">

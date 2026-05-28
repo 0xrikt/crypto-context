@@ -1,10 +1,12 @@
 # CryptoContext 项目交接文档
 
-> 最后更新：2026-05-27
+> 最后更新：2026-05-28
 
-## 当前状态：V1.1 开发完成
+## 当前状态：V1.1 已验收上线
 
 **线上地址**：https://app-rho-jet-70.vercel.app
+**GitHub**：https://github.com/0xrikt/crypto-context
+**MCP 端点**：`https://app-rho-jet-70.vercel.app/api/mcp`
 
 ### ✅ 已完成并验证
 
@@ -12,12 +14,13 @@
 |------|------|----------|
 | 用户注册/登录 | ✅ 正常 | 浏览器测试 |
 | 邮箱确认流程 | ✅ 正常 | 实际注册测试 |
-| Bitget 连接 | ✅ 正常 | 生产环境浏览器验证，portfolio 显示 $6,555 (BGB) |
-| Portfolio 同步 | ✅ 正常 | Bitget 验证通过，dashboard + MCP 双通道 |
+| Bitget 连接 | ✅ 正常 | 生产环境验证，portfolio 显示 BGB + 聚合数据 |
+| Portfolio 同步 | ✅ 正常 | 交易所 + 钱包聚合验证，总值 ~$6,700 |
 | 10 交易所支持 | ✅ 代码就绪 | 浏览器验证下拉框 10 家交易所、passphrase 字段逻辑 |
 | MCP 端到端 | ✅ 正常 | JSON-RPC 2.0 完整验证（initialize, tools/list, tools/call, ping） |
-| MCP get_portfolio | ✅ 正常 | curl 端到端测试，asset 过滤正常 |
-| MCP get_context | ✅ 正常 | V1 返回全量 portfolio |
+| MCP get_portfolio | ✅ 正常 | Claude Code 实际调用验证，asset 过滤正常 |
+| MCP get_context | ✅ 正常 | Claude Code 实际调用验证，返回全量 portfolio |
+| MCP Claude Code 集成 | ✅ 已连接 | `claude mcp add` 注册完成，user scope，端到端工具调用验证通过 |
 | MCP Token 管理 | ✅ 正常 | 自定义名称 + 权限级别 + Revoke |
 | 匿名化权限 | ✅ 正常 | anonymized token 的 USD 值全部替换为 `$***` |
 | MCP 鉴权拒绝 | ✅ 正常 | 无/无效/已撤销 token 均正确拒绝 |
@@ -48,13 +51,20 @@
 - **MCP 整合**：钱包数据自动聚合到 get_portfolio 和 get_context
 - **Dashboard**：钱包区块（添加/移除/展示），与交易所区块并列
 
-### ⏳ 待用户验收
+### ✅ 用户已验收
+
+| 功能 | 结果 |
+|------|------|
+| Bitget 交易所 | ✅ 实际 API key 连接验证通过 |
+| 钱包追踪 | ✅ 实际钱包 0x3641...dcc3 (Ethereum) 验证通过 |
+| 多源聚合 | ✅ 交易所 + 钱包聚合验证通过（BGB $6,483 + ETH $160 + USDT $32） |
+| MCP → Claude Code | ✅ 端到端工具调用验证通过（get_portfolio + get_context） |
+
+### ⏳ 待后续测试
 
 | 功能 | 说明 |
 |------|------|
 | 其他 9 家交易所 | 代码已就绪，需各交易所 API key 实际测试 |
-| 钱包追踪 | 代码已就绪，需输入实际钱包地址测试 |
-| 多源聚合 | 交易所 + 钱包聚合逻辑已就绪，需多数据源实测 |
 
 ### 🔧 V1.1 Bug 修复记录
 
@@ -103,21 +113,54 @@
 | wallets | 链上钱包地址 | ✅ SELECT/INSERT/DELETE |
 | mcp_tokens | MCP 令牌（hash 存储）| ✅ SELECT/INSERT/UPDATE |
 
-## 下一步
+## MCP 接入信息
 
-### 短期（用户验收）
-- 用户提供其他交易所 API key 实际测试连接
-- 用户提供钱包地址测试链上追踪
-- 确定产品正式名称和自定义域名
+### Claude Code 注册命令
+```bash
+claude mcp add -t http -s user \
+  -H "Authorization: Bearer <TOKEN>" \
+  -- crypto-ctx https://app-rho-jet-70.vercel.app/api/mcp
+```
+
+### 当前活跃 Token
+| 名称 | 权限 | 用途 |
+|------|------|------|
+| Claude Code Live | full | Claude Code 已注册连接 |
+| Claude Code | full | 备用（未注册到 Claude Code） |
+
+### 可用工具
+| 工具 | 功能 |
+|------|------|
+| `get_portfolio` | 返回完整持仓（支持按 asset 过滤） |
+| `get_context` | 根据查询返回相关 portfolio context |
+
+## 下一步（V2 优化方向）
+
+### 优先级 1：Context 文档体系扩展
+- **现状**：仅有 portfolio-context.md 一个文档
+- **目标**：构建一组 context 文档，包括但不限于：
+  - `portfolio-context.md` — 当前持仓快照（已有）
+  - `trading-profile.md` — 基于交易历史总结的交易特点/偏好
+  - `investment-thesis.md` — 用户的投资逻辑和策略笔记
+  - `market-position.md` — 持仓与市场的关系分析
+  - 其他待全盘设计
+- **影响**：`get_context` 工具将从全量 portfolio 升级为多文档语义检索
+
+### 优先级 2：前端视觉与信息架构优化
+- **现状**：所有内容在一个页面上垂直平铺，功能齐全但布局质朴
+- **目标**：
+  - 优化信息架构（分区/分 tab/卡片式布局）
+  - 视觉设计精致化（数据可视化、图表、占比图等）
+  - 交互体验提升（响应式、loading 状态、动画过渡）
+- **参考**：可在 Variant.com 上找参考风格
 
 ### 中期
-- get_context 增加语义检索
-- 支持用户自定义投资笔记/thesis
-- portfolio 历史快照和趋势
 - 扩展 ERC-20 Token 列表（用户自定义）
+- portfolio 历史快照和趋势
+- 确定产品正式名称和自定义域名
 
-### 长期（V2）
-- DEX 交易历史追踪
+### 长期
+- DEX 交易历史 / LP 仓位 / DeFi 协议追踪
+- 非 EVM 链支持（Solana, Sui 等）
 - 多用户共享 context（团队版）
 - 更多 MCP 工具（交易历史、PnL 分析）
-- 非 EVM 链支持（Solana, Sui 等）

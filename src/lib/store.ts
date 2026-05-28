@@ -256,3 +256,60 @@ export async function findMcpToken(
   if (error || !data) return null;
   return data as McpToken;
 }
+
+// ---------- Context Documents ----------
+
+export interface StoredContextDocument {
+  id: string;
+  user_id: string;
+  connection_id: string;
+  dimension: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  updated_at: string;
+}
+
+export async function upsertContextDocument(
+  userId: string,
+  connectionId: string,
+  dimension: string,
+  content: string,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("context_documents").upsert(
+    {
+      user_id: userId,
+      connection_id: connectionId,
+      dimension,
+      content,
+      metadata,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "connection_id,dimension" },
+  );
+
+  if (error) throw new Error(`Failed to upsert context document: ${error.message}`);
+}
+
+export async function getContextDocuments(
+  userId: string,
+  dimension?: string,
+): Promise<StoredContextDocument[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("context_documents")
+    .select("*")
+    .eq("user_id", userId);
+
+  if (dimension) {
+    query = query.eq("dimension", dimension);
+  }
+
+  const { data, error } = await query.order("updated_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to get context documents: ${error.message}`);
+  return data ?? [];
+}
