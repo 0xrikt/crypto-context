@@ -9,6 +9,7 @@ import {
   HoldingsTable,
   DataSources,
   McpSection,
+  ContextInsights,
 } from "@/components/dashboard";
 import type { PortfolioData, Connection, Wallet, McpToken } from "@/components/dashboard";
 
@@ -22,6 +23,9 @@ export default function DashboardPage() {
   const [syncing, setSyncing] = useState(false);
   const [contextSyncing, setContextSyncing] = useState(false);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>([]);
+  const [contextDocs, setContextDocs] = useState<
+    Array<{ dimension: string; content: string; metadata: Record<string, unknown>; updatedAt: string }>
+  >([]);
 
   const fetchPortfolio = useCallback(async () => {
     setSyncing(true);
@@ -36,6 +40,16 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const fetchContextDocs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/context");
+      if (res.ok) {
+        const data = await res.json();
+        setContextDocs(data.documents ?? []);
+      }
+    } catch { /* non-critical */ }
+  }, []);
+
   const syncContext = useCallback(async (connectionId: string) => {
     setContextSyncing(true);
     try {
@@ -46,13 +60,15 @@ export default function DashboardPage() {
       });
       if (!res.ok) {
         console.error("[sync] Context sync failed:", res.status);
+      } else {
+        fetchContextDocs();
       }
     } catch {
       console.error("[sync] Context sync network error");
     } finally {
       setContextSyncing(false);
     }
-  }, []);
+  }, [fetchContextDocs]);
 
   useEffect(() => {
     async function init() {
@@ -91,10 +107,11 @@ export default function DashboardPage() {
 
       if ((conns && conns.length > 0) || (ws && ws.length > 0)) {
         fetchPortfolio();
+        fetchContextDocs();
       }
     }
     init();
-  }, [router, fetchPortfolio]);
+  }, [router, fetchPortfolio, fetchContextDocs]);
 
   const handleSync = useCallback(() => {
     fetchPortfolio();
@@ -296,6 +313,11 @@ export default function DashboardPage() {
             )}
           </div>
         ) : null}
+
+        {/* Context insights — trading profile + fund flow */}
+        {(contextDocs.length > 0 || hasAnySources) && (
+          <ContextInsights documents={contextDocs} />
+        )}
 
         {/* Data sources */}
         <DataSources
