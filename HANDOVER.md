@@ -132,26 +132,37 @@ claude mcp add -t http -s user \
 | 工具 | 功能 |
 |------|------|
 | `get_portfolio` | 返回完整持仓（支持按 asset 过滤） |
-| `get_context` | 根据查询返回相关 portfolio context |
+| `get_context` | 返回完整投资者画像：持仓快照 + 交易画像 + 资金流向 |
 
-## 下一步（V2 优化方向）
+### V2 新增：多维度 Context 文档体系
 
-### 优先级 1：Context 文档体系扩展
-- **现状**：仅有 portfolio-context.md 一个文档
-- **目标**：构建一组 context 文档，包括但不限于：
-  - `portfolio-context.md` — 当前持仓快照（已有）
-  - `trading-profile.md` — 基于交易历史总结的交易特点/偏好
-  - `investment-thesis.md` — 用户的投资逻辑和策略笔记
-  - `market-position.md` — 持仓与市场的关系分析
-  - 其他待全盘设计
-- **影响**：`get_context` 工具将从全量 portfolio 升级为多文档语义检索
+#### 三个维度
+1. **Portfolio Snapshot** — 实时持仓（余额 + 定价，每次 MCP 调用实时获取）
+2. **Trading Profile** — 交易画像（基于 CCXT fetchMyTrades + fetchClosedOrders + fetchOpenOrders）
+   - 交易频率、偏好交易对、买卖比例、仓位大小、限价单占比、DCA 检测
+3. **Fund Flow** — 资金流向（基于 CCXT fetchDeposits + fetchWithdrawals）
+   - 存取款统计、按币种分布、资金模式（定投/大额/混合）、最近活动
 
-### 优先级 2：前端视觉与信息架构优化
+#### 技术实现
+- **新表**：`context_documents`（connection_id + dimension 唯一，存生成的 markdown + metadata）
+- **新文件**：
+  - `src/lib/exchange-history.ts` — CCXT 历史数据获取（分页、超时、per-symbol fallback）
+  - `src/lib/generators/trading-profile.ts` — 交易画像分析 + markdown 生成
+  - `src/lib/generators/fund-flow.ts` — 资金流向分析 + markdown 生成
+  - `src/lib/sync.ts` — Sync 编排（获取 → 分析 → 存储）
+  - `src/app/api/exchange/sync/route.ts` — POST 端点触发 context sync
+- **Sync 触发**：交易所 connect 后自动触发 + Dashboard Sync 按钮手动触发
+- **MCP 响应**：get_context 返回三维度 markdown（~1.3KB），AI agent 整块消化
+
+#### 已验证
+- Bitget 真实数据：7 trades, 7 transfers, 12s sync 完成
+- MCP get_context 端到端验证通过，Claude Code 调用确认收到完整三维度 context
+
+## 下一步
+
+### 优先级 1：前端视觉与信息架构优化
 - **现状**：所有内容在一个页面上垂直平铺，功能齐全但布局质朴
-- **目标**：
-  - 优化信息架构（分区/分 tab/卡片式布局）
-  - 视觉设计精致化（数据可视化、图表、占比图等）
-  - 交互体验提升（响应式、loading 状态、动画过渡）
+- **目标**：信息架构更精致好用，数据可视化（图表、占比图），交互体验提升
 - **参考**：可在 Variant.com 上找参考风格
 
 ### 中期
