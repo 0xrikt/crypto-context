@@ -2,7 +2,7 @@
 
 > 最后更新：2026-05-28
 
-## 当前状态：V1.1 已验收上线
+## 当前状态：V2 已上线（Context 系统 + Dashboard 重构）
 
 **线上地址**：https://app-rho-jet-70.vercel.app
 **GitHub**：https://github.com/0xrikt/crypto-context
@@ -27,6 +27,21 @@
 | 安全加固 | ✅ 已实施 | 7 种安全响应头、速率限制、输入校验、错误脱敏 |
 | 前端 Light Theme | ✅ 完成 | 全站白色主题，浏览器验证 |
 | 钱包追踪 (V1.1) | ✅ 已验证 | 5 条 EVM 链支持，钱包数据已出现在 Portfolio 中（ETH + USDT） |
+| V2 Context 系统 | ✅ 已验证 | 三维度 context（Portfolio + Trading Profile + Fund Flow），MCP 端到端验证 |
+| V2 Dashboard 重构 | ✅ 已验证 | 组件化架构、数据可视化（Donut 图 + Holdings 表 + Stat 卡片），生产环境验证 |
+
+### V2 新增功能
+
+#### Dashboard 重构
+- **架构**：968 行单文件拆分为 9 个专注组件（PortfolioSummary, AllocationChart, HoldingsTable, DataSources, McpSection, ConnectExchangeForm, AddWalletForm, types, index）
+- **数据可视化**：
+  - CSS Donut Chart（conic-gradient，零依赖）显示资产分配
+  - Holdings Table 带百分比进度条
+  - 4 个 Stat 卡片（Total Value, Assets, Exchanges, Wallets）
+- **布局**：Stat 卡片 → Donut + Holdings 并排 → Data Sources 网格 → MCP Section
+- **Portfolio API 增强**：新增 `holdings` 结构化数据（asset, amount, usdValue, allocation, sources），支持图表渲染
+- **新增文件**：`src/components/dashboard/` 目录下 9 个文件
+- **修改文件**：`dashboard/page.tsx`（968→230 行），`api/exchange/portfolio/route.ts`
 
 ### V1.1 新增功能
 
@@ -159,11 +174,6 @@ claude mcp add -t http -s user \
 - MCP get_context 端到端验证通过，Claude Code 调用确认收到完整三维度 context
 
 ## 下一步
-
-### 优先级 1：前端视觉与信息架构优化
-- **现状**：所有内容在一个页面上垂直平铺，功能齐全但布局质朴
-- **目标**：信息架构更精致好用，数据可视化（图表、占比图），交互体验提升
-- **参考**：可在 Variant.com 上找参考风格
 
 ### 中期
 - 扩展 ERC-20 Token 列表（用户自定义）
