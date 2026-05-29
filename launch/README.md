@@ -50,6 +50,7 @@ Everything needed to take CryptoContext public, organized so the **message** dri
     --add-topic portfolio --add-topic ai-agents --add-topic claude \
     --add-topic cursor --add-topic ccxt --add-topic defi --add-topic open-source
   ```
+  ⚠️ Run this while `gh` is authenticated as the repo owner **0xrikt**. The local `gh` is currently logged in as `EarthOnlineDev`, which can push over SSH but lacks admin rights to edit `0xrikt/crypto-context` (you'll get an HTTP 404). Switch with `gh auth switch` / `gh auth login`, or just set the description/topics/website in the GitHub web UI.
 - [ ] **(Decision) Custom domain** — see below. Either swap now, or consciously launch on the Vercel URL.
 - [ ] **A clean transcript screenshot exists** for the thread / HN / Farcaster (real session preferred; else the landing-page transcript card).
 
