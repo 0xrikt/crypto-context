@@ -1,6 +1,6 @@
 # MCP directory listings
 
-**This is the wedge.** The MCP/AI-dev crowd is the audience that understands "context layer" instantly, and the directories are where they browse for servers. Getting listed everywhere is the highest-leverage, lowest-effort distribution you have — do this *first* (see [runbook.md](runbook.md)), before the HN/Twitter push, so there's somewhere credible to land.
+**This is the wedge.** The MCP/AI-dev crowd is the audience that understands "context layer" instantly, and the directories are where they browse for servers. Getting listed everywhere is the highest-leverage, lowest-effort distribution you have — do this *first* (see [the runbook](README.md)), before the HN/Twitter push, so there's somewhere credible to land.
 
 CryptoContext is a **remote (HTTP) MCP server** with Bearer-token auth, and it's also self-hostable (open source). Some directories assume stdio/npm servers — list it as remote/hosted where that option exists.
 
@@ -124,4 +124,4 @@ Set on the repo so directories auto-ingest cleanly:
 - **Topics:** `mcp`, `model-context-protocol`, `crypto`, `portfolio`, `ai-agents`, `claude`, `cursor`, `ccxt`, `defi`, `nextjs`, `open-source`
 - **Website:** the live demo URL.
 
-Commands (gh CLI) are in [runbook.md](runbook.md).
+Commands (gh CLI) are in [the runbook](README.md).

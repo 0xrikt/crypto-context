@@ -104,4 +104,4 @@ open source. read-only. $0. not your context, not your AI.
 
 - **Never paste identical text across platforms** — tailor each. Algorithms and mods both penalize duplication, and audiences notice.
 - **The repo and the thesis post are the destinations**; every channel is just a different on-ramp to them.
-- **Stagger, don't blast.** Sequence in [runbook.md](runbook.md) — directories → HN → Twitter → Reddit/Farcaster over days, so each can breathe and you can actually respond to every thread.
+- **Stagger, don't blast.** Sequence in [the runbook](README.md) — directories → HN → Twitter → Reddit/Farcaster over days, so each can breathe and you can actually respond to every thread.

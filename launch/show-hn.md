@@ -105,4 +105,4 @@ Roadmap and warts in the repo. Happy to go deep on any of it.
 - **Answer every comment in the first 3 hours**, especially skeptical ones, calmly and technically. HN rewards a maker who engages honestly far more than a perfect launch.
 - If someone finds a real security hole, thank them publicly and fix it fast — that thread *becomes* your credibility.
 - Don't argue the crypto-is-a-scam tangent; redirect to the technical idea (context layers / MCP) which stands on its own.
-- Don't ask for upvotes anywhere — it's against the rules and HN detects voting rings. The directory + Twitter push (see [runbook.md](runbook.md)) drives organic eyes instead.
+- Don't ask for upvotes anywhere — it's against the rules and HN detects voting rings. The directory + Twitter push (see [the runbook](README.md)) drives organic eyes instead.
