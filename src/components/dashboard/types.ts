@@ -52,3 +52,10 @@ export interface McpToken {
   revoked: boolean;
   created_at: string;
 }
+
+export interface ContextDoc {
+  dimension: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  updatedAt: string;
+}

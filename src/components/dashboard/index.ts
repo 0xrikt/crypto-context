@@ -4,4 +4,7 @@ export { HoldingsTable } from "./HoldingsTable";
 export { DataSources } from "./DataSources";
 export { McpSection } from "./McpSection";
 export { ContextInsights } from "./ContextInsights";
-export type { PortfolioData, Connection, Wallet, McpToken } from "./types";
+export { OnboardingChecklist } from "./OnboardingChecklist";
+export { DashboardProvider, useDashboard } from "./DashboardProvider";
+export { AppShell } from "./AppShell";
+export type { PortfolioData, Connection, Wallet, McpToken, ContextDoc } from "./types";

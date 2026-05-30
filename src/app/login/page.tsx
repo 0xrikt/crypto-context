@@ -17,12 +17,16 @@ function LoginForm() {
   useEffect(() => {
     const errorParam = searchParams.get("error");
     const confirmed = searchParams.get("confirmed");
+    const reset = searchParams.get("reset");
 
     if (errorParam) {
       setError(decodeURIComponent(errorParam));
     }
     if (confirmed === "true") {
       setSuccess("Email confirmed! You can now log in.");
+    }
+    if (reset === "success") {
+      setSuccess("Password updated! Log in with your new password.");
     }
   }, [searchParams]);
 
@@ -89,7 +93,15 @@ function LoginForm() {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-500 mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm text-gray-500">Password</label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-emerald-600 hover:text-emerald-500 transition"
+                >
+                  Forgot?
+                </Link>
+              </div>
               <input
                 type="password"
                 value={password}
@@ -141,6 +153,15 @@ function LoginForm() {
           No account?{" "}
           <Link href="/signup" className="text-emerald-600 hover:text-emerald-500 transition">
             Sign up
+          </Link>
+        </p>
+        <p className="mt-2 text-xs text-gray-400 text-center">
+          Didn&apos;t get a confirmation email?{" "}
+          <Link
+            href="/resend-confirmation"
+            className="text-emerald-600 hover:text-emerald-500 transition"
+          >
+            Resend
           </Link>
         </p>
       </div>

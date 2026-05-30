@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-interface ContextDoc {
-  dimension: string;
-  content: string;
-  metadata: Record<string, unknown>;
-  updatedAt: string;
-}
+import type { ContextDoc } from "./types";
 
 interface Props {
   documents: ContextDoc[];

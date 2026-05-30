@@ -1,0 +1,73 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { Alert, Button, Field, Input } from "@/components/ui";
+
+export default function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
+      });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      setSent(true);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AuthShell
+      title="Reset your password"
+      subtitle={sent ? undefined : "Enter your email and we'll send a reset link"}
+      footer={
+        <Link href="/login" className="text-emerald-600 hover:text-emerald-500 transition">
+          Back to log in
+        </Link>
+      }
+    >
+      {sent ? (
+        <Alert tone="success" align="start" className="mt-6" title="Check your inbox">
+          If an account exists for {email}, a password reset link is on its way. The link expires in
+          one hour.
+        </Alert>
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <Field label="Email">
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+            />
+          </Field>
+
+          {error && <Alert tone="error">{error}</Alert>}
+
+          <Button type="submit" loading={loading} className="w-full">
+            {loading ? "Sending…" : "Send reset link"}
+          </Button>
+        </form>
+      )}
+    </AuthShell>
+  );
+}

@@ -1,7 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { McpToken } from "./types";
+import {
+  Badge,
+  Button,
+  Card,
+  CopyButton,
+  EmptyState,
+  Field,
+  Input,
+  Select,
+  SectionHeader,
+} from "@/components/ui";
+import { cn } from "@/lib/cn";
 
 interface Props {
   tokens: McpToken[];
@@ -10,7 +23,119 @@ interface Props {
   onRevokeToken: (id: string) => void;
 }
 
+const PERMISSION_LABELS: Record<string, string> = {
+  full: "Full access",
+  portfolio_only: "Portfolio only",
+  anonymized: "Anonymized",
+};
+
+function claudeCommand(origin: string, token: string): string {
+  return `claude mcp add --transport http crypto-ctx ${origin}/api/mcp --header "Authorization: Bearer ${token}"`;
+}
+
+function cursorConfig(origin: string, token: string): string {
+  return JSON.stringify(
+    {
+      mcpServers: {
+        "crypto-ctx": {
+          url: `${origin}/api/mcp`,
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      },
+    },
+    null,
+    2
+  );
+}
+
+const KeyIcon = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+  </svg>
+);
+
+const PlusIcon = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+  </svg>
+);
+
+/** Per-client setup snippets shown right after a token is generated. */
+function ClientSnippets({ origin, token }: { origin: string; token: string }) {
+  const [client, setClient] = useState<"claude" | "cursor">("claude");
+  const snippet = client === "claude" ? claudeCommand(origin, token) : cursorConfig(origin, token);
+
+  return (
+    <div className="code-block rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200">
+        <div className="flex items-center gap-1">
+          {(["claude", "cursor"] as const).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setClient(c)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-xs font-medium transition",
+                client === c ? "bg-white text-gray-900 shadow-sm" : "text-gray-400 hover:text-gray-700"
+              )}
+            >
+              {c === "claude" ? "Claude Code" : "Cursor"}
+            </button>
+          ))}
+        </div>
+        <CopyButton value={snippet} variant="icon" />
+      </div>
+      <pre className="p-4 font-mono text-xs sm:text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+        {client === "claude" ? (
+          <>
+            <span className="text-emerald-600">$ </span>
+            {snippet}
+          </>
+        ) : (
+          snippet
+        )}
+      </pre>
+    </div>
+  );
+}
+
+function TokenReveal({
+  token,
+  origin,
+  onDone,
+}: {
+  token: string;
+  origin: string;
+  onDone: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <Card className="p-4 border-emerald-300 space-y-3">
+        <div className="flex items-center gap-2 text-emerald-700">
+          <span className="text-emerald-600">{KeyIcon}</span>
+          <span className="text-xs font-medium">Copy this token now — it won&apos;t be shown again</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 min-w-0 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg break-all font-mono">
+            {token}
+          </code>
+          <CopyButton value={token} variant="icon" />
+        </div>
+      </Card>
+
+      <ClientSnippets origin={origin} token={token} />
+
+      <Button variant="ghost" size="sm" onClick={onDone}>
+        Done
+      </Button>
+    </div>
+  );
+}
+
 export function McpSection({ tokens, hasConnections, onGenerateToken, onRevokeToken }: Props) {
+  const [origin, setOrigin] = useState("https://your-app.vercel.app");
+  useEffect(() => setOrigin(window.location.origin), []);
+
   const [newToken, setNewToken] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [tokenName, setTokenName] = useState("Claude Code");
@@ -30,163 +155,106 @@ export function McpSection({ tokens, hasConnections, onGenerateToken, onRevokeTo
     }
   }
 
+  const idle = !newToken && !showForm;
+  const showHeaderAction = idle && hasConnections && tokens.length > 0;
+
   return (
     <section>
-      <h2 className="text-lg font-bold text-gray-900 mb-1">MCP Connection</h2>
-      <p className="text-xs text-gray-400 mb-4">Connect your AI tools via Model Context Protocol</p>
+      <SectionHeader
+        title="MCP Connection"
+        description="Connect Claude, Cursor, or any MCP-aware agent to your portfolio context"
+        action={
+          showHeaderAction && (
+            <Button size="sm" leftIcon={PlusIcon} onClick={() => setShowForm(true)}>
+              New token
+            </Button>
+          )
+        }
+      />
 
       {newToken ? (
-        <div className="space-y-3">
-          <div className="glass rounded-xl p-4 border-emerald-300">
-            <div className="flex items-center gap-2 mb-3">
-              <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-              </svg>
-              <span className="text-xs text-emerald-700 font-medium">Copy this token now — it won&apos;t be shown again</span>
-            </div>
-            <code className="block text-sm text-gray-700 bg-gray-50 p-3 rounded-lg break-all font-mono">
-              {newToken}
-            </code>
-          </div>
-
-          <div className="code-block rounded-xl overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-              <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-              <span className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-              <span className="ml-2 text-xs text-gray-400 font-mono">terminal</span>
-            </div>
-            <div className="p-4 font-mono text-sm text-gray-500 leading-relaxed">
-              <span className="text-emerald-600">$</span>{" "}
-              <span className="text-gray-700">claude mcp add --transport http crypto-ctx</span>
-              {typeof window !== "undefined"
-                ? ` ${window.location.origin}/api/mcp`
-                : " https://your-app.vercel.app/api/mcp"}{" "}
-              <span className="text-gray-400">--header</span>{" "}
-              <span className="text-gray-700">&quot;Authorization: Bearer</span>{" "}
-              <span className="text-emerald-600">{newToken}</span>
-              <span className="text-gray-700">&quot;</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setNewToken("")}
-            className="text-xs text-gray-400 hover:text-gray-700 transition"
-          >
-            Done
-          </button>
-        </div>
+        <TokenReveal token={newToken} origin={origin} onDone={() => setNewToken("")} />
       ) : showForm ? (
-        <div className="glass rounded-xl p-5 space-y-4">
-          <div>
-            <label className="block text-sm text-gray-500 mb-1.5">Token name</label>
-            <input
-              type="text"
+        <Card className="p-5 space-y-4">
+          <Field label="Token name">
+            <Input
               value={tokenName}
               onChange={(e) => setTokenName(e.target.value)}
               placeholder="e.g. Claude Code, Cursor, My Agent"
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition"
             />
-          </div>
-          <div>
-            <label className="block text-sm text-gray-500 mb-1.5">Permission level</label>
-            <select
-              value={tokenPermission}
-              onChange={(e) => setTokenPermission(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 transition appearance-none"
-            >
+          </Field>
+          <Field label="Permission level">
+            <Select value={tokenPermission} onChange={(e) => setTokenPermission(e.target.value)}>
               <option value="full">Full — all portfolio data with USD values</option>
               <option value="portfolio_only">Portfolio only — holdings without context</option>
               <option value="anonymized">Anonymized — hide USD values</option>
-            </select>
-          </div>
+            </Select>
+          </Field>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleGenerate}
-              disabled={generating || !tokenName.trim()}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-200/50 flex items-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Generating...
-                </>
-              ) : (
-                "Generate"
-              )}
-            </button>
-            <button
-              onClick={() => setShowForm(false)}
-              className="text-xs text-gray-400 hover:text-gray-700 transition"
-            >
+            <Button onClick={handleGenerate} loading={generating} disabled={!tokenName.trim()}>
+              Generate token
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => hasConnections && setShowForm(true)}
-          disabled={!hasConnections}
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-emerald-200/50 flex items-center gap-2"
-        >
-          {!hasConnections ? (
-            "Connect a source first"
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              New MCP token
-            </>
-          )}
-        </button>
-      )}
+        </Card>
+      ) : !hasConnections ? (
+        <EmptyState
+          icon={KeyIcon}
+          title="Connect a source first"
+          description="Add an exchange or wallet before creating an MCP token — your agents need data to read."
+          action={
+            <Link href="/dashboard/sources">
+              <Button>Go to Data Sources</Button>
+            </Link>
+          }
+        />
+      ) : tokens.length === 0 ? (
+        <EmptyState
+          icon={KeyIcon}
+          title="No MCP tokens yet"
+          description="Create a token to connect Claude, Cursor, or any agent. You'll get a one-line setup command."
+          action={<Button onClick={() => setShowForm(true)}>Create your first token</Button>}
+        />
+      ) : null}
 
       {/* Existing tokens */}
-      {tokens.length > 0 && (
+      {!newToken && tokens.length > 0 && (
         <div className="mt-5">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Tokens</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">Active tokens</h3>
           <div className="space-y-2">
             {tokens.map((token) => (
-              <div
+              <Card
                 key={token.id}
-                className={`glass rounded-xl p-3.5 flex items-center justify-between group ${token.revoked ? "opacity-50" : ""}`}
+                className={cn("p-3.5 flex items-center justify-between group", token.revoked && "opacity-60")}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                    </svg>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
+                    {KeyIcon}
                   </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-900">{token.name}</span>
-                    <span className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                      {token.permission_level}
-                    </span>
-                    {token.revoked && (
-                      <span className="ml-2 text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                        revoked
-                      </span>
-                    )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-900 truncate">{token.name}</span>
+                      <Badge tone={token.revoked ? "gray" : "emerald"}>
+                        {PERMISSION_LABELS[token.permission_level] ?? token.permission_level}
+                      </Badge>
+                      {token.revoked && <Badge tone="red">Revoked</Badge>}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      Created {new Date(token.created_at).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-400">
-                    {new Date(token.created_at).toLocaleDateString()}
-                  </span>
-                  {!token.revoked && (
-                    <button
-                      onClick={() => onRevokeToken(token.id)}
-                      className="text-xs text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
-                    >
-                      Revoke
-                    </button>
-                  )}
-                </div>
-              </div>
+                {!token.revoked && (
+                  <button
+                    onClick={() => onRevokeToken(token.id)}
+                    className="text-xs text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  >
+                    Revoke
+                  </button>
+                )}
+              </Card>
             ))}
           </div>
         </div>
