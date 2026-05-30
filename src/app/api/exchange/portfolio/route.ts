@@ -7,8 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getConnections, getConnectionCredentials, saveSnapshot, getWallets } from "@/lib/store";
 import { fetchPortfolio, type PortfolioSnapshot } from "@/lib/exchange";
-import { fetchWalletPortfolio, type WalletSnapshot } from "@/lib/wallet";
-import type { SupportedChain } from "@/lib/chains";
+import { fetchWalletPortfolioForChain, type WalletSnapshot } from "@/lib/wallet";
 import { generatePortfolioContext } from "@/lib/context";
 import {
   checkRateLimit,
@@ -105,7 +104,7 @@ export async function GET(request: NextRequest) {
 
   const walletPromises = wallets.map((w) =>
     withTimeout(
-      fetchWalletPortfolio(w.address as `0x${string}`, w.chain as SupportedChain),
+      fetchWalletPortfolioForChain(w.address, w.chain),
       15_000,
       `${w.chain}:${w.address.slice(0, 10)}`
     ).catch((err) => {

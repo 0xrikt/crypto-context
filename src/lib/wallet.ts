@@ -1,5 +1,6 @@
 import { createPublicClient, http, formatUnits } from "viem";
-import { CHAIN_CONFIGS, ERC20_ABI, type SupportedChain } from "./chains";
+import { CHAIN_CONFIGS, ERC20_ABI, type SupportedChain, type WalletChain } from "./chains";
+import { fetchSolanaPortfolio } from "./chains/solana";
 
 export interface WalletHolding {
   asset: string;
@@ -10,7 +11,7 @@ export interface WalletHolding {
 
 export interface WalletSnapshot {
   address: string;
-  chain: SupportedChain;
+  chain: WalletChain;
   holdings: WalletHolding[];
   totalUsdValue: number;
   fetchedAt: string;
@@ -26,6 +27,8 @@ async function fetchNativePriceUsd(coingeckoId: string): Promise<number> {
     polygon: "matic-network",
     arbitrum: "ethereum",
     base: "ethereum",
+    optimism: "ethereum",
+    avalanche: "avalanche-2",
   };
   const id = ids[coingeckoId] ?? coingeckoId;
 
@@ -168,4 +171,18 @@ export async function fetchWalletPortfolio(
     totalUsdValue,
     fetchedAt: new Date().toISOString(),
   };
+}
+
+/**
+ * Chain-agnostic portfolio dispatcher. Branches on the wallet's chain: Solana
+ * uses the dependency-free JSON-RPC fetcher; everything else is EVM via viem.
+ * Callers that hold a `WalletChain` (mixed EVM + Solana) should use this rather
+ * than `fetchWalletPortfolio` directly so address typing stays honest.
+ */
+export async function fetchWalletPortfolioForChain(
+  address: string,
+  chain: WalletChain
+): Promise<WalletSnapshot> {
+  if (chain === "solana") return fetchSolanaPortfolio(address);
+  return fetchWalletPortfolio(address as `0x${string}`, chain);
 }

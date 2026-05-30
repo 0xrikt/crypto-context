@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getWallets } from "@/lib/store";
-import { fetchWalletPortfolio, type WalletSnapshot } from "@/lib/wallet";
-import type { SupportedChain } from "@/lib/chains";
+import { fetchWalletPortfolioForChain, type WalletSnapshot } from "@/lib/wallet";
 
 export const maxDuration = 60;
 
@@ -26,10 +25,7 @@ export async function GET() {
 
   for (const w of wallets) {
     try {
-      const snapshot = await fetchWalletPortfolio(
-        w.address as `0x${string}`,
-        w.chain as SupportedChain
-      );
+      const snapshot = await fetchWalletPortfolioForChain(w.address, w.chain);
       snapshots.push(snapshot);
     } catch (err) {
       console.error(

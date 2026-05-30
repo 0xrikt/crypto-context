@@ -12,9 +12,10 @@ import { createHash } from "crypto";
 import { createServerClient } from "@supabase/ssr";
 import { decrypt } from "@/lib/crypto";
 import { fetchPortfolio, type SupportedExchange, type ExchangeCredentials, type PortfolioSnapshot } from "@/lib/exchange";
-import { fetchWalletPortfolio, type WalletSnapshot } from "@/lib/wallet";
-import type { SupportedChain } from "@/lib/chains";
+import { fetchWalletPortfolioForChain, type WalletSnapshot } from "@/lib/wallet";
 import { generatePortfolioContext, generateFullContext, type ContextDocument } from "@/lib/context";
+import { rowToInvestorProfile, type InvestorProfileRow } from "@/lib/store";
+import { renderProfileMarkdown } from "@/lib/generators/investor-profile";
 import { checkRateLimit, RATE_LIMITS, getClientIp } from "@/lib/security";
 
 /** MCP fetches across all connected exchanges — needs more time */
@@ -159,10 +160,7 @@ async function fetchAllWallets(
 
   for (const w of wallets) {
     try {
-      const snapshot = await fetchWalletPortfolio(
-        w.address as `0x${string}`,
-        w.chain as SupportedChain
-      );
+      const snapshot = await fetchWalletPortfolioForChain(w.address, w.chain);
       snapshots.push(snapshot);
     } catch (err) {
       console.error(
@@ -218,12 +216,19 @@ async function handleCallTool(
   }
 
   if (toolName === "get_context") {
-    // Fetch cached context documents (trading profile, fund flow)
+    // Fetch cached context documents (trading profile, fund flow) + investor profile
     const supabase = createServiceClient();
-    const { data: contextDocs } = await supabase
-      .from("context_documents")
-      .select("dimension, content, updated_at")
-      .eq("user_id", userId);
+    const [{ data: contextDocs }, { data: profileRow }] = await Promise.all([
+      supabase
+        .from("context_documents")
+        .select("dimension, content, updated_at")
+        .eq("user_id", userId),
+      supabase
+        .from("investor_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
 
     const docs: ContextDocument[] = (contextDocs ?? []).map((d) => ({
       dimension: d.dimension as string,
@@ -231,7 +236,11 @@ async function handleCallTool(
       updated_at: d.updated_at as string,
     }));
 
-    let result = generateFullContext(portfolioMd, docs);
+    const investorProfileMd = profileRow
+      ? renderProfileMarkdown(rowToInvestorProfile(profileRow as InvestorProfileRow))
+      : undefined;
+
+    let result = generateFullContext(portfolioMd, docs, investorProfileMd);
 
     if (permissionLevel === "anonymized") {
       result = result.replace(/\$[\d,]+/g, "$***");

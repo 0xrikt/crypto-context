@@ -18,6 +18,7 @@ import type {
   PortfolioData,
   McpToken,
   ContextDoc,
+  InvestorProfile,
 } from "./types";
 
 export interface DashboardMock {
@@ -27,6 +28,7 @@ export interface DashboardMock {
   portfolio: PortfolioData | null;
   mcpTokens: McpToken[];
   contextDocs: ContextDoc[];
+  investorProfile?: InvestorProfile | null;
 }
 
 interface ExchangeInput {
@@ -49,8 +51,10 @@ interface DashboardContextValue {
   portfolio: PortfolioData | null;
   mcpTokens: McpToken[];
   contextDocs: ContextDoc[];
+  investorProfile: InvestorProfile | null;
   syncing: boolean;
   contextSyncing: boolean;
+  profileGenerating: boolean;
   lastSyncedAt: Date | null;
   /** Any exchange or wallet connected. */
   hasAnySources: boolean;
@@ -61,6 +65,7 @@ interface DashboardContextValue {
   /** At least one non-revoked MCP token. */
   hasActiveToken: boolean;
   sync: () => void;
+  generateProfile: () => void;
   connectExchange: (data: ExchangeInput) => Promise<void>;
   disconnectExchange: (id: string) => Promise<void>;
   connectWallet: (data: WalletInput) => Promise<void>;
@@ -117,16 +122,20 @@ export function DashboardProvider({
   const [portfolio, setPortfolio] = useState<PortfolioData | null>(mock?.portfolio ?? null);
   const [mcpTokens, setMcpTokens] = useState<McpToken[]>(mock?.mcpTokens ?? []);
   const [contextDocs, setContextDocs] = useState<ContextDoc[]>(mock?.contextDocs ?? []);
+  const [investorProfile, setInvestorProfile] = useState<InvestorProfile | null>(
+    mock?.investorProfile ?? null
+  );
   const [loading, setLoading] = useState(!isMock);
   const [syncing, setSyncing] = useState(false);
   const [contextSyncing, setContextSyncing] = useState(false);
+  const [profileGenerating, setProfileGenerating] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(
     deriveLastSynced(mock?.portfolio ?? null)
   );
 
   // --- Data fetching (real mode only) ---
-  const fetchPortfolio = useCallback(async () => {
-    if (isMock) return;
+  const fetchPortfolio = useCallback(async (): Promise<PortfolioData | null> => {
+    if (isMock) return null;
     setSyncing(true);
     try {
       const res = await fetch("/api/exchange/portfolio");
@@ -140,6 +149,7 @@ export function DashboardProvider({
             `Couldn't reach ${data.errors.length} source${data.errors.length > 1 ? "s" : ""}: ${names}`
           );
         }
+        return data;
       } else {
         toast.error("Failed to load portfolio. Please try again.");
       }
@@ -148,6 +158,7 @@ export function DashboardProvider({
     } finally {
       setSyncing(false);
     }
+    return null;
   }, [isMock, toast]);
 
   const fetchContextDocs = useCallback(async () => {
@@ -183,6 +194,64 @@ export function DashboardProvider({
     [isMock, fetchContextDocs]
   );
 
+  // Build the sanitized aggregate payload the profile endpoint expects.
+  // Venue labels are name/chain only — never addresses.
+  const buildProfilePayload = useCallback((p: PortfolioData) => {
+    return {
+      totalUsdValue: p.totalUsdValue,
+      exchangeCount: p.snapshots.length,
+      walletCount: p.walletSnapshots?.length ?? 0,
+      holdings: p.holdings.map((h) => ({
+        asset: h.asset,
+        usdValue: h.usdValue,
+        allocation: h.allocation,
+        sources: h.sources,
+      })),
+      venues: [
+        ...p.snapshots.map((s) => ({ label: s.exchange, usdValue: s.totalUsdValue })),
+        ...(p.walletSnapshots ?? []).map((w) => ({
+          label: `${w.chain} wallet`,
+          usdValue: w.totalUsdValue,
+        })),
+      ],
+    };
+  }, []);
+
+  const generateProfile = useCallback(
+    async (override?: PortfolioData) => {
+      if (isMock) {
+        setProfileGenerating(true);
+        setTimeout(() => {
+          setProfileGenerating(false);
+          toast.success("Investor profile updated");
+        }, 1200);
+        return;
+      }
+      const p = override ?? portfolio;
+      if (!p || p.holdings.length === 0) return;
+
+      setProfileGenerating(true);
+      try {
+        const res = await fetch("/api/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildProfilePayload(p)),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.profile) setInvestorProfile(data.profile);
+        } else {
+          toast.error("Couldn't generate your investor profile. Try again in a moment.");
+        }
+      } catch {
+        toast.error("Network error while generating your profile.");
+      } finally {
+        setProfileGenerating(false);
+      }
+    },
+    [isMock, portfolio, buildProfilePayload, toast]
+  );
+
   // --- Initial load (real mode only) ---
   useEffect(() => {
     if (isMock) return;
@@ -216,6 +285,12 @@ export function DashboardProvider({
         .then((d) => d && active && setMcpTokens(d.tokens ?? []))
         .catch(() => {});
 
+      // Cached investor profile (non-blocking; absent until first generated).
+      fetch("/api/profile")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d && active && d.profile && setInvestorProfile(d.profile))
+        .catch(() => {});
+
       setLoading(false);
 
       if ((conns && conns.length > 0) || (ws && ws.length > 0)) {
@@ -235,17 +310,25 @@ export function DashboardProvider({
     if (isMock) {
       setSyncing(true);
       setContextSyncing(true);
+      setProfileGenerating(true);
       setTimeout(() => {
         setSyncing(false);
         setContextSyncing(false);
+        setProfileGenerating(false);
         setLastSyncedAt(new Date());
         toast.success("Portfolio synced");
       }, 900);
       return;
     }
-    fetchPortfolio();
-    for (const conn of connections) syncContext(conn.id);
-  }, [isMock, connections, fetchPortfolio, syncContext, toast]);
+    // Fetch balances, refresh per-venue context docs, then (re)build the holistic
+    // profile from the fresh aggregates + freshly-written docs. Sequenced so GLM
+    // sees current data; profile generation never blocks the portfolio render.
+    void (async () => {
+      const data = await fetchPortfolio();
+      await Promise.all(connections.map((c) => syncContext(c.id)));
+      if (data && data.holdings.length > 0) await generateProfile(data);
+    })();
+  }, [isMock, connections, fetchPortfolio, syncContext, generateProfile, toast]);
 
   const connectExchange = useCallback(
     async (data: ExchangeInput) => {
@@ -493,14 +576,17 @@ export function DashboardProvider({
     portfolio,
     mcpTokens,
     contextDocs,
+    investorProfile,
     syncing,
     contextSyncing,
+    profileGenerating,
     lastSyncedAt,
     hasAnySources: connections.length > 0 || wallets.length > 0,
     hasExchanges: connections.length > 0,
     hasPortfolio: !!portfolio && portfolio.holdings.length > 0,
     hasActiveToken: mcpTokens.some((t) => !t.revoked),
     sync,
+    generateProfile,
     connectExchange,
     disconnectExchange,
     connectWallet,

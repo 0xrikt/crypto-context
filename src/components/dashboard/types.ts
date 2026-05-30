@@ -59,3 +59,14 @@ export interface ContextDoc {
   metadata: Record<string, unknown>;
   updatedAt: string;
 }
+
+export interface InvestorProfile {
+  summary: string;
+  tradingStyle: string;
+  riskProfile: string;
+  preferences: string[];
+  behaviors: string[];
+  agentGuidance: string[];
+  generatedAt: string;
+  source: "llm" | "deterministic";
+}

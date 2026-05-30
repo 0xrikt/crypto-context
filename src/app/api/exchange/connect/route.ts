@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { verifyReadOnly, PASSPHRASE_EXCHANGES, type SupportedExchange } from "@/lib/exchange";
+import { verifyReadOnly, PASSPHRASE_EXCHANGES, SUPPORTED_EXCHANGES, type SupportedExchange } from "@/lib/exchange";
 import { saveConnection } from "@/lib/store";
 import {
   checkRateLimit,
@@ -24,11 +24,6 @@ import {
 
 /** Extend Vercel function timeout to 30s for exchanges with many markets */
 export const maxDuration = 30;
-
-const SUPPORTED_EXCHANGES: SupportedExchange[] = [
-  "binance", "okx", "bybit", "coinbase",
-  "kraken", "bitget", "kucoin", "gateio", "htx", "mexc",
-];
 
 export async function POST(request: NextRequest) {
   // Rate limiting

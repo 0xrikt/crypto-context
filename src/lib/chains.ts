@@ -1,4 +1,4 @@
-import { type Chain, mainnet, bsc, polygon, arbitrum, base } from "viem/chains";
+import { type Chain, mainnet, bsc, polygon, arbitrum, base, optimism, avalanche } from "viem/chains";
 
 export interface ChainConfig {
   chain: Chain;
@@ -28,7 +28,7 @@ const ERC20_ABI = [
 
 export { ERC20_ABI };
 
-export type SupportedChain = "ethereum" | "bsc" | "polygon" | "arbitrum" | "base";
+export type SupportedChain = "ethereum" | "bsc" | "polygon" | "arbitrum" | "base" | "optimism" | "avalanche";
 
 export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
   ethereum: {
@@ -92,10 +92,92 @@ export const CHAIN_CONFIGS: Record<SupportedChain, ChainConfig> = {
       { address: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb", symbol: "DAI", decimals: 18, coingeckoId: "dai" },
     ],
   },
+  optimism: {
+    chain: optimism,
+    rpcUrl: "https://optimism-rpc.publicnode.com",
+    nativeSymbol: "ETH",
+    coingeckoPlatformId: "optimistic-ethereum",
+    tokens: [
+      { address: "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", symbol: "USDC", decimals: 6, coingeckoId: "usd-coin" },
+      { address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", symbol: "USDT", decimals: 6, coingeckoId: "tether" },
+      { address: "0x4200000000000000000000000000000000000042", symbol: "OP", decimals: 18, coingeckoId: "optimism" },
+      { address: "0x4200000000000000000000000000000000000006", symbol: "WETH", decimals: 18, coingeckoId: "ethereum" },
+      { address: "0x68f180fcCe6836688e9084f035309E29Bf0A2095", symbol: "WBTC", decimals: 8, coingeckoId: "wrapped-bitcoin" },
+    ],
+  },
+  avalanche: {
+    chain: avalanche,
+    rpcUrl: "https://avalanche-c-chain-rpc.publicnode.com",
+    nativeSymbol: "AVAX",
+    coingeckoPlatformId: "avalanche",
+    tokens: [
+      { address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", symbol: "USDC", decimals: 6, coingeckoId: "usd-coin" },
+      { address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", symbol: "USDT", decimals: 6, coingeckoId: "tether" },
+      { address: "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7", symbol: "WAVAX", decimals: 18, coingeckoId: "avalanche-2" },
+      { address: "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB", symbol: "WETH.e", decimals: 18, coingeckoId: "ethereum" },
+      { address: "0x0555E30da8f98308EdB960aa94C0Db47230d2B9c", symbol: "WBTC.e", decimals: 8, coingeckoId: "wrapped-bitcoin" },
+    ],
+  },
 };
 
 export const SUPPORTED_CHAINS = Object.keys(CHAIN_CONFIGS) as SupportedChain[];
 
 export function isValidEvmAddress(address: string): boolean {
   return /^0x[0-9a-fA-F]{40}$/.test(address);
+}
+
+// ---------- Solana (non-EVM) ----------
+
+/** Default Solana JSON-RPC endpoint (no key required). Overridable via SOLANA_RPC_URL. */
+export const SOLANA_RPC_DEFAULT = "https://solana-rpc.publicnode.com";
+
+/** The full set of wallet chains: EVM chains plus Solana. */
+export type WalletChain = SupportedChain | "solana";
+
+export const SUPPORTED_WALLET_CHAINS: WalletChain[] = [...SUPPORTED_CHAINS, "solana"];
+
+const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE58_MAP: Record<string, number> = Object.fromEntries(
+  [...BASE58_ALPHABET].map((c, i) => [c, i]),
+);
+
+/**
+ * Validate a Solana address: base58-encoded, decoding to exactly 32 bytes (an
+ * Ed25519 public key). Pure (no deps), so it works server- and client-side.
+ */
+export function isValidSolanaAddress(address: string): boolean {
+  if (typeof address !== "string" || address.length < 32 || address.length > 44) return false;
+  if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(address)) return false;
+
+  const bytes: number[] = [];
+  for (const ch of address) {
+    let carry = BASE58_MAP[ch];
+    if (carry === undefined) return false;
+    for (let i = 0; i < bytes.length; i++) {
+      carry += bytes[i] * 58;
+      bytes[i] = carry & 0xff;
+      carry = Math.floor(carry / 256);
+    }
+    while (carry > 0) {
+      bytes.push(carry & 0xff);
+      carry = Math.floor(carry / 256);
+    }
+  }
+  // Each leading '1' encodes one zero byte.
+  for (let k = 0; k < address.length && address[k] === "1"; k++) bytes.push(0);
+  return bytes.length === 32;
+}
+
+/** Validate an address against the address format of its chain. */
+export function isValidWalletAddress(chain: WalletChain, address: string): boolean {
+  return chain === "solana" ? isValidSolanaAddress(address) : isValidEvmAddress(address);
+}
+
+/**
+ * Normalize an address for storage/dedup. EVM addresses are lowercased; Solana
+ * base58 addresses are case-sensitive and must be preserved exactly.
+ */
+export function normalizeWalletAddress(chain: WalletChain, address: string): string {
+  const trimmed = address.trim();
+  return chain === "solana" ? trimmed : trimmed.toLowerCase();
 }

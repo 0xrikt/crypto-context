@@ -33,6 +33,13 @@ export const populatedMock: DashboardMock = {
       label: "DeFi",
       created_at: daysAgo(22),
     },
+    {
+      id: "w3",
+      address: "Fix7ureSo1anaWa11etDoNotUseRea1Funds1111111",
+      chain: "solana",
+      label: "Solana",
+      created_at: daysAgo(8),
+    },
   ],
   portfolio: {
     context:
@@ -53,6 +60,7 @@ export const populatedMock: DashboardMock = {
     walletSnapshots: [
       { address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F", chain: "ethereum", totalUsdValue: 14_300, holdingsCount: 3, fetchedAt: minutesAgo(9) },
       { address: "0x9aF3b1C2D4e5F60718293A4b5C6d7E8f90123456", chain: "arbitrum", totalUsdValue: 6_800, holdingsCount: 2, fetchedAt: minutesAgo(9) },
+      { address: "Fix7ureSo1anaWa11etDoNotUseRea1Funds1111111", chain: "solana", totalUsdValue: 4_200, holdingsCount: 2, fetchedAt: minutesAgo(9) },
     ],
     errors: [{ source: "okx", error: "Invalid API credentials" }],
   },
@@ -89,6 +97,35 @@ export const populatedMock: DashboardMock = {
         "Fund Flow\n- 14 deposits, 6 withdrawals over 180 days\n- Regular cadence consistent with weekly DCA\n- Net inflow; withdrawals align with periodic profit-taking",
     },
   ],
+  investorProfile: {
+    summary:
+      "A disciplined core-and-satellite crypto investor running an ETH-weighted base with a BTC hedge, then rotating a smaller satellite sleeve into L2 governance tokens. Regular weekly deposits point to DCA conviction layered under discretionary swing trades.",
+    tradingStyle:
+      "Active but structured: ~12 maker-side trades a week around majors, with open limit orders rather than market chasing. Swing positions sit on top of a long-held core that rarely gets sold.",
+    riskProfile:
+      "Moderate. Top-3 assets hold ~71% of the book and the stablecoin buffer sits near 12% — enough dry powder for entries without being defensive. Concentration risk is in ETH, by intent.",
+    preferences: [
+      "ETH as the portfolio anchor",
+      "BTC as a macro hedge",
+      "L2 governance tokens (ARB)",
+      "Blue-chip oracles (LINK)",
+      "Maker-side limit execution",
+    ],
+    behaviors: [
+      "Weekly deposit cadence consistent with DCA",
+      "Keeps a long-term core untouched while swing-trading around it",
+      "Withdrawals cluster around periodic profit-taking",
+      "Comfortable holding open limit orders across venues",
+    ],
+    agentGuidance: [
+      "Lead with limit-order and DCA framing — this user dislikes market chasing",
+      "Treat the ETH core as semi-permanent; don't suggest trimming it casually",
+      "Flag the ~12% cash buffer before proposing new entries",
+      "Surface L2 and oracle news proactively; that's the active satellite sleeve",
+    ],
+    generatedAt: minutesAgo(9),
+    source: "llm",
+  },
 };
 
 /** A brand-new account — drives the first-run onboarding + empty states. */

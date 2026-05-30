@@ -9,6 +9,7 @@ import { Button, Card, EmptyState, SectionHeader } from "@/components/ui";
 const EXCHANGE_ICONS: Record<string, string> = {
   binance: "BN", okx: "OK", bybit: "BY", coinbase: "CB", kraken: "KR",
   bitget: "BG", kucoin: "KC", gateio: "GT", htx: "HT", mexc: "MX",
+  cryptocom: "CR", bingx: "BX", bitfinex: "BF", gemini: "GE", bitstamp: "BS", upbit: "UP",
 };
 
 const PlusIcon = (

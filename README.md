@@ -27,7 +27,7 @@ That answer requires knowing your holdings, your concentration, your trade histo
 - **Built for AI, not for staring.** It's not another dashboard. Your positions become clean, queryable context an agent can reason over — concentration, allocation, risk flags — not a chart you interpret yourself.
 - **Knows how you trade, not just what you hold.** Trading patterns, DCA habits, fund flows, funding behavior — so advice is about *you*, not a generic investor.
 - **Every venue, one picture.** Multiple exchanges + multiple chains unified into a single complete view. Comprehensiveness is the whole point.
-- **Deterministic, not an LLM.** Context is computed locally with plain rules — reproducible, private, and $0 to generate. No model sees your data to build it.
+- **Grounded numbers, AI-written profile.** Holdings, concentration and trading stats are computed locally into hard facts. A free LLM then reads only that aggregated shape — never your keys or addresses — to write a rich investor profile. The numbers stay deterministic; the interpretation is smart.
 - **Open source and read-only.** Read-only API keys, encrypted at rest. Don't trust us — [read the code](SECURITY.md) or self-host.
 - **No lock-in, by design.** You own the context layer and point it at any agent. Switch models freely; your context follows you.
 
@@ -90,7 +90,7 @@ Deploy anywhere that runs Next.js. It's tuned for Vercel's free tier — total c
 ## How it works
 
 1. **Connect your venues.** Add exchanges with a read-only API key; paste wallet addresses. The app can never trade or withdraw — [read-only, always](SECURITY.md).
-2. **Context is auto-generated.** Holdings, concentration, trading patterns, and fund flows are structured into clean context — computed locally, **no LLM**, refreshed on every sync.
+2. **Context is auto-generated.** Holdings, concentration, trading patterns, and fund flows are computed locally into hard facts; an LLM then reads only that aggregated shape — never your keys or addresses — to write your investor profile. Refreshed on every sync.
 3. **Any AI queries via MCP.** One command connects your agent. Ask anything about your portfolio — it already knows.
 
 ## Supported exchanges (10)

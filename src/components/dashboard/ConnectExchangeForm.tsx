@@ -14,6 +14,12 @@ const EXCHANGES = [
   { id: "gateio", name: "Gate.io" },
   { id: "htx", name: "HTX" },
   { id: "mexc", name: "MEXC" },
+  { id: "cryptocom", name: "Crypto.com" },
+  { id: "bingx", name: "BingX" },
+  { id: "bitfinex", name: "Bitfinex" },
+  { id: "gemini", name: "Gemini" },
+  { id: "bitstamp", name: "Bitstamp" },
+  { id: "upbit", name: "Upbit" },
 ];
 
 const PASSPHRASE_EXCHANGES = ["okx", "bitget", "kucoin"];

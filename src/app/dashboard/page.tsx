@@ -5,6 +5,7 @@ import {
   AllocationChart,
   HoldingsTable,
   ContextInsights,
+  InvestorProfile,
   OnboardingChecklist,
 } from "@/components/dashboard";
 import { useDashboard } from "@/components/dashboard/DashboardProvider";
@@ -59,6 +60,8 @@ export default function OverviewPage() {
           lastSyncedAt={lastSyncedAt}
           onSync={sync}
         />
+
+        <InvestorProfile />
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
           <div className="lg:col-span-2">

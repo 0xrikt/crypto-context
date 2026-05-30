@@ -9,6 +9,9 @@ const CHAINS = [
   { id: "polygon", name: "Polygon" },
   { id: "arbitrum", name: "Arbitrum" },
   { id: "base", name: "Base" },
+  { id: "optimism", name: "Optimism" },
+  { id: "avalanche", name: "Avalanche C-Chain" },
+  { id: "solana", name: "Solana" },
 ];
 
 const EyeIcon = (
@@ -30,19 +33,26 @@ export function AddWalletForm({ onConnect, onCancel }: Props) {
   const [error, setError] = useState("");
   const [connecting, setConnecting] = useState(false);
 
+  const isSolana = chain === "solana";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
-      setError("Invalid Ethereum address");
+    const trimmed = address.trim();
+    const valid = isSolana
+      ? /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(trimmed)
+      : /^0x[0-9a-fA-F]{40}$/.test(trimmed);
+
+    if (!valid) {
+      setError(isSolana ? "Invalid Solana address" : "Invalid EVM address");
       return;
     }
 
     setConnecting(true);
 
     try {
-      await onConnect({ address, chain, label });
+      await onConnect({ address: trimmed, chain, label });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add wallet");
     } finally {
@@ -58,7 +68,7 @@ export function AddWalletForm({ onConnect, onCancel }: Props) {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           required
-          placeholder="0x..."
+          placeholder={isSolana ? "Base58 address…" : "0x…"}
           className="font-mono"
         />
       </Field>

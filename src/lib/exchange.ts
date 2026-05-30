@@ -16,7 +16,13 @@ export type SupportedExchange =
   | "kucoin"
   | "gateio"
   | "htx"
-  | "mexc";
+  | "mexc"
+  | "cryptocom"
+  | "bingx"
+  | "bitfinex"
+  | "gemini"
+  | "bitstamp"
+  | "upbit";
 
 /** Exchanges that require a passphrase in addition to API key + secret */
 export const PASSPHRASE_EXCHANGES: SupportedExchange[] = ["okx", "bitget", "kucoin"];
@@ -53,7 +59,16 @@ const EXCHANGE_CLASSES: Record<SupportedExchange, new (config: object) => Exchan
   gateio: ccxt.gateio,
   htx: ccxt.htx,
   mexc: ccxt.mexc,
+  cryptocom: ccxt.cryptocom,
+  bingx: ccxt.bingx,
+  bitfinex: ccxt.bitfinex,
+  gemini: ccxt.gemini,
+  bitstamp: ccxt.bitstamp,
+  upbit: ccxt.upbit,
 };
+
+/** Single source of truth for the supported exchange ids (drives API validation). */
+export const SUPPORTED_EXCHANGES = Object.keys(EXCHANGE_CLASSES) as SupportedExchange[];
 
 /**
  * Exchange-specific options for CCXT initialization.

@@ -189,12 +189,22 @@ export interface ContextDocument {
 export function generateFullContext(
   portfolioMd: string,
   contextDocs: ContextDocument[],
+  investorProfileMd?: string,
 ): string {
   const sections: string[] = [];
 
   sections.push("# Crypto Investor Context");
   sections.push(`> Generated: ${new Date().toISOString()}`);
   sections.push("");
+
+  // Investor profile is the headline — the holistic "who this investor is" that an
+  // agent should read first. Falls back gracefully when not yet generated.
+  if (investorProfileMd && investorProfileMd.trim()) {
+    sections.push(investorProfileMd.trim());
+    sections.push("");
+    sections.push("---");
+    sections.push("");
+  }
 
   // Portfolio (always included, real-time)
   sections.push(portfolioMd);

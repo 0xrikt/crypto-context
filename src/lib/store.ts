@@ -5,7 +5,8 @@
 import { createClient } from "./supabase/server";
 import { encrypt, decrypt } from "./crypto";
 import type { SupportedExchange, ExchangeCredentials } from "./exchange";
-import type { SupportedChain } from "./chains";
+import { normalizeWalletAddress, type WalletChain } from "./chains";
+import type { InvestorProfileData } from "./generators/investor-profile";
 
 // ---------- Types ----------
 
@@ -42,7 +43,7 @@ export interface StoredWallet {
   id: string;
   user_id: string;
   address: string;
-  chain: SupportedChain;
+  chain: WalletChain;
   label: string;
   created_at: string;
 }
@@ -52,14 +53,15 @@ export interface StoredWallet {
 export async function saveWallet(
   userId: string,
   address: string,
-  chain: SupportedChain,
+  chain: WalletChain,
   label: string
 ): Promise<string> {
   const supabase = await createClient();
 
+  // EVM addresses are lowercased for dedup; Solana base58 is case-sensitive.
   const { data, error } = await supabase
     .from("wallets")
-    .insert({ user_id: userId, address: address.toLowerCase(), chain, label })
+    .insert({ user_id: userId, address: normalizeWalletAddress(chain, address), chain, label })
     .select("id")
     .single();
 
@@ -312,4 +314,85 @@ export async function getContextDocuments(
 
   if (error) throw new Error(`Failed to get context documents: ${error.message}`);
   return data ?? [];
+}
+
+// ---------- Investor Profile (holistic, one row per user) ----------
+
+/** Raw DB row shape for the `investor_profiles` table. */
+export interface InvestorProfileRow {
+  user_id: string;
+  summary: string;
+  trading_style: string;
+  risk_profile: string;
+  preferences: string[];
+  behaviors: string[];
+  agent_guidance: string[];
+  source: string;
+  generated_at: string;
+  updated_at: string;
+}
+
+function asStrings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+}
+
+/** Map a DB row to the app-facing profile shape. Exported for the MCP service path. */
+export function rowToInvestorProfile(row: InvestorProfileRow): InvestorProfileData {
+  return {
+    summary: row.summary,
+    tradingStyle: row.trading_style,
+    riskProfile: row.risk_profile,
+    preferences: asStrings(row.preferences),
+    behaviors: asStrings(row.behaviors),
+    agentGuidance: asStrings(row.agent_guidance),
+    generatedAt: row.generated_at,
+    source: row.source === "llm" ? "llm" : "deterministic",
+  };
+}
+
+export async function upsertInvestorProfile(
+  userId: string,
+  profile: InvestorProfileData,
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("investor_profiles").upsert(
+    {
+      user_id: userId,
+      summary: profile.summary,
+      trading_style: profile.tradingStyle,
+      risk_profile: profile.riskProfile,
+      preferences: profile.preferences,
+      behaviors: profile.behaviors,
+      agent_guidance: profile.agentGuidance,
+      source: profile.source,
+      generated_at: profile.generatedAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  if (error) throw new Error(`Failed to upsert investor profile: ${error.message}`);
+}
+
+/**
+ * Read the cached profile. Returns null when absent OR when the table hasn't been
+ * provisioned yet (pre-migration) — callers treat "no profile" as a soft state.
+ */
+export async function getInvestorProfile(
+  userId: string,
+): Promise<InvestorProfileData | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("investor_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[store] getInvestorProfile failed (table missing?):", error.message);
+    return null;
+  }
+  return data ? rowToInvestorProfile(data as InvestorProfileRow) : null;
 }

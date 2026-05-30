@@ -222,7 +222,7 @@ export default function Home() {
               {
                 step: "02",
                 title: "Context auto-generated",
-                desc: "Holdings, concentration, trading patterns and fund flows are structured into clean context — computed locally, no LLM, refreshed on every sync.",
+                desc: "Holdings, concentration, trading patterns and fund flows are computed locally into hard facts. An LLM then reads only that aggregated shape — never your keys or addresses — to write a rich investor profile.",
                 icon: "M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z",
               },
               {
