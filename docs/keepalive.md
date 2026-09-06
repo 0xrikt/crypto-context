@@ -1,6 +1,6 @@
 # Database keepalive
 
-Status: production table created and verified; Vercel deployment pending.
+Status: deployed to production and enabled on 2026-09-06.
 
 Purpose: generate a small real database write every three days, without a test
 account, user data access, notifications, or an availability-monitoring feature.
@@ -22,29 +22,37 @@ account, user data access, notifications, or an availability-monitoring feature.
   insufficient user database activity over seven days, not a guaranteed
   minimum keepalive frequency. A missed run waits until the next due day.
 
-## Activation (requires production access)
+## Activation procedure (completed)
 
 1. Apply `migrations/0005_service_keepalive.sql` to the existing project
    `ckviuhczbifmroggxfto` through its authenticated SQL Editor or Management API.
 2. Configure a random 32+ character `CRON_SECRET` in the existing production
    Vercel project. Do not print it, commit it, or send it in a URL.
 3. Deploy the reviewed files through main / Vercel Git Integration. Confirm the
-   cron appears in that project. Keep unrelated auth-error changes separately
-   reviewable; they remain local unless explicitly included in deployment.
-4. On a due day, make one authorized call and verify the stored row via a
-   separate read; verify anon access is denied. No user-table inspection needed.
-5. Record actual production evidence here; local tests are not activation.
+   cron appears in that project. Auth-error changes were excluded from this deployment and remain local.
+4. On a due day, verify an authorized endpoint call against a separate database
+   read; verify anonymous access is denied. No user-table inspection needed.
 
 Disable: remove the cron entry and redeploy, or disable it in Vercel. The
 single non-user timestamp can remain; dropping the table is unnecessary.
 
 ## Evidence
 
-Local: 76 tests pass (12 keepalive route cases), TypeScript and targeted ESLint
-pass. Production migration succeeded on 2026-09-06. A service-role write returned
-201, a separate read returned 200 with the same timestamp, and anon read was
-denied with 401. Cron endpoint deployment and activation remain pending Vercel
-CLI login. Production build also passed.
+- Code commit: `9bddf11`; deployed via Git Integration on 2026-09-06.
+- Production deployment: `dpl_6bRs39urBfpScodoNZ7QfjEskcpF` (READY), serving
+  `https://cryptocontext.earthonline.site`.
+- Production route invoked with its secret: HTTP 200, `success: true`, stored
+  timestamp `2026-09-06T03:12:01.629Z`; independent service-role read returned
+  HTTP 200 with exactly that timestamp.
+- Route without authorization: HTTP 401. Anonymous table read: HTTP 401.
+- Vercel project API confirms cron enabled (`disabledAt: null`), definition
+  `/api/cron/keepalive`, daily `0 2 * * *`, bound to the production deployment.
+- First verification above was a manual authenticated invocation, not evidence
+  of a scheduler-fired run. Next due database-write day is 2026-09-09,
+  scheduled 02:00 UTC / 10:00 Shanghai (subject to Vercel scheduling delay).
+  Sep 7 and 8 invocations exit without contacting the database.
+- Local: all 76 tests passed (12 keepalive cases), TypeScript, targeted ESLint
+  and production build passed. No tests read or wrote real user data.
 
 ## Sources
 
