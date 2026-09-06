@@ -39,11 +39,14 @@ single non-user timestamp can remain; dropping the table is unnecessary.
 ## Evidence
 
 - Code commit: `9bddf11`; deployed via Git Integration on 2026-09-06.
-- Production deployment: `dpl_6bRs39urBfpScodoNZ7QfjEskcpF` (READY), serving
+- Initial verified code deployment: `dpl_6bRs39urBfpScodoNZ7QfjEskcpF` (READY), serving
   `https://cryptocontext.earthonline.site`.
 - Production route invoked with its secret: HTTP 200, `success: true`, stored
   timestamp `2026-09-06T03:12:01.629Z`; independent service-role read returned
   HTTP 200 with exactly that timestamp.
+- Latest documentation-only production commit `4914988` deployed as
+  `dpl_4T14okZ3Gf8RwT8pUx1dY4BWFtSo` (READY); project API reconfirmed
+  the cron enabled and bound to this deployment.
 - Route without authorization: HTTP 401. Anonymous table read: HTTP 401.
 - Vercel project API confirms cron enabled (`disabledAt: null`), definition
   `/api/cron/keepalive`, daily `0 2 * * *`, bound to the production deployment.

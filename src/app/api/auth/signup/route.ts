@@ -15,6 +15,15 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase.auth.signUp({ email, password });
 
   if (error) {
+    if (error.name === "AuthRetryableFetchError" || error.status === 0 || (error.status !== undefined && error.status >= 500)) {
+      // Record only classification, never credentials or provider response text.
+      console.error("auth_service_unavailable", { operation: "signup", status: error.status });
+      return NextResponse.json(
+        { error: "Authentication service is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+
     // Pass through actionable validation; genericize everything else so raw
     // backend errors (incl. account-existence wording) never reach the client.
     const msg = /password/i.test(error.message)

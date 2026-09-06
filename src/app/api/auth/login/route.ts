@@ -18,6 +18,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
+    if (error.name === "AuthRetryableFetchError" || error.status === 0 || (error.status !== undefined && error.status >= 500)) {
+      // Record only classification, never credentials or provider response text.
+      console.error("auth_service_unavailable", { operation: "login", status: error.status });
+      return NextResponse.json(
+        { error: "Authentication service is temporarily unavailable. Please try again later." },
+        { status: 503 }
+      );
+    }
+
     // Keep the two states the user can act on; genericize everything else.
     const msg = /not confirmed/i.test(error.message)
       ? "Email not confirmed yet — check your inbox for the confirmation link."
