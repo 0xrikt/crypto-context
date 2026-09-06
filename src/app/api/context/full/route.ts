@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { authenticateMcpToken, assembleFullContext, applyPermission } from "@/lib/context-assembler";
+import { authenticateMcpToken, assembleFullContext, assemblePortfolioMd, applyPermission } from "@/lib/context-assembler";
 import { checkRateLimit, RATE_LIMITS, getClientIp } from "@/lib/security";
 
 export const maxDuration = 60;
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const markdown = applyPermission(await assembleFullContext(userId), permissionLevel);
+    const markdown = applyPermission(await (permissionLevel === "portfolio_only" ? assemblePortfolioMd(userId) : assembleFullContext(userId)), permissionLevel);
     return new NextResponse(markdown, {
       status: 200,
       headers: {

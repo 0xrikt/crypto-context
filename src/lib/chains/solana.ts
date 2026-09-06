@@ -113,26 +113,13 @@ export async function fetchSolanaPortfolio(address: string): Promise<WalletSnaps
 
   // Native SOL + token accounts (both token programs) in parallel; each degrades independently.
   const [lamports, classicAccounts, token2022Accounts] = await Promise.all([
-    solanaRpc<{ value: number }>(rpcUrl, "getBalance", [address])
-      .then((r) => r.value)
-      .catch((err) => {
-        console.error("[solana] getBalance failed:", err instanceof Error ? err.message : err);
-        return 0;
-      }),
+    solanaRpc<{ value: number }>(rpcUrl, "getBalance", [address]).then((r) => r.value),
     solanaRpc<{ value: ParsedTokenAccount[] }>(rpcUrl, "getTokenAccountsByOwner", [
-      address,
-      { programId: TOKEN_PROGRAM_ID },
-      { encoding: "jsonParsed" },
-    ])
-      .then((r) => r.value)
-      .catch(() => [] as ParsedTokenAccount[]),
+      address, { programId: TOKEN_PROGRAM_ID }, { encoding: "jsonParsed" },
+    ]).then((r) => r.value),
     solanaRpc<{ value: ParsedTokenAccount[] }>(rpcUrl, "getTokenAccountsByOwner", [
-      address,
-      { programId: TOKEN_2022_PROGRAM_ID },
-      { encoding: "jsonParsed" },
-    ])
-      .then((r) => r.value)
-      .catch(() => [] as ParsedTokenAccount[]),
+      address, { programId: TOKEN_2022_PROGRAM_ID }, { encoding: "jsonParsed" },
+    ]).then((r) => r.value),
   ]);
 
   // Aggregate token balances by mint (a wallet may hold several accounts per mint).
@@ -154,7 +141,7 @@ export async function fetchSolanaPortfolio(address: string): Promise<WalletSnaps
   let totalUsdValue = 0;
 
   const solAmount = lamports / LAMPORTS_PER_SOL;
-  if (solAmount > 0.00001) {
+  if (solAmount > 0) {
     const usdValue = solAmount * solPrice;
     holdings.push({ asset: "SOL", total: solAmount, usdValue: usdValue > 0 ? usdValue : null, source });
     if (usdValue > 0) totalUsdValue += usdValue;

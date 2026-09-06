@@ -40,14 +40,14 @@ export function HoldingsTable({ holdings }: Props) {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-900">{h.asset}</span>
                 <span className="text-sm font-medium text-gray-900 tabular-nums">
-                  ${h.usdValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  {h.priceUnavailable ? "Price unavailable" : `$${h.usdValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-0.5">
                 <span className="text-xs text-gray-400 tabular-nums">
                   {h.amount.toLocaleString("en-US", { maximumFractionDigits: 4 })}
                 </span>
-                <span className="text-xs text-gray-400 tabular-nums">{h.allocation}%</span>
+                <span className="text-xs text-gray-400 tabular-nums">{h.priceUnavailable ? "—" : `${h.allocation}%`}</span>
               </div>
               <div className="mt-1.5 h-1 bg-gray-100 rounded-full overflow-hidden">
                 <div

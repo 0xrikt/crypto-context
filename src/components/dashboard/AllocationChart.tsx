@@ -52,11 +52,9 @@ export function AllocationChart({ holdings, totalValue }: Props) {
     });
   }
 
-  let cumulative = 0;
-  const gradientStops = slices.map((s) => {
-    const start = cumulative;
-    cumulative += s.pct;
-    return `${s.color} ${start}% ${cumulative}%`;
+  const gradientStops = slices.map((s, i) => {
+    const start = slices.slice(0, i).reduce((sum, row) => sum + row.pct, 0);
+    return `${s.color} ${start}% ${start + s.pct}%`;
   });
 
   const conicGradient = `conic-gradient(${gradientStops.join(", ")})`;

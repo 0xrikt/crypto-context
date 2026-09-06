@@ -80,14 +80,13 @@ async function handleCallTool(
     const asset = args.asset as string | undefined;
     if (asset) {
       const lines = result.split("\n");
+      let inHoldings = false;
       result = lines
-        .filter(
-          (line) =>
-            !line.startsWith("|") ||
-            line.includes("Asset") ||
-            line.includes("---") ||
-            line.toUpperCase().includes(asset.toUpperCase()),
-        )
+        .filter((line) => {
+          if (line.startsWith("## ")) inHoldings = line === "## Holdings";
+          return !inHoldings || !line.startsWith("|") || line.startsWith("| Asset ") ||
+            line.startsWith("|---") || line.split("|")[1]?.trim().toUpperCase() === asset.toUpperCase();
+        })
         .join("\n");
     }
 
@@ -95,7 +94,7 @@ async function handleCallTool(
   }
 
   if (toolName === "get_context") {
-    const result = await assembleFullContext(userId);
+    const result = await (permissionLevel === "portfolio_only" ? assemblePortfolioMd(userId) : assembleFullContext(userId));
     return { content: [{ type: "text", text: applyPermission(result, permissionLevel) }] };
   }
 
@@ -103,6 +102,10 @@ async function handleCallTool(
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && origin !== request.nextUrl.origin) {
+    return NextResponse.json({ error: "Origin not allowed" }, { status: 403 });
+  }
   // Rate limiting
   const ip = getClientIp(request.headers);
   const rateLimit = checkRateLimit(ip, "mcp", RATE_LIMITS.mcp.maxRequests, RATE_LIMITS.mcp.windowMs);
@@ -152,16 +155,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!body || typeof body !== "object" || Array.isArray(body) || body.jsonrpc !== "2.0" ||
+      typeof body.method !== "string" ||
+      (body.id !== undefined && typeof body.id !== "string" && typeof body.id !== "number") ||
+      (body.params !== undefined && (!body.params || typeof body.params !== "object" || Array.isArray(body.params)))) {
+    return NextResponse.json({jsonrpc:"2.0",error:{code:-32600,message:"Invalid request"},id:null},{status:400});
+  }
   const { method, params, id } = body;
+  if (id === undefined) {
+    return new NextResponse(null, { status: 202 });
+  }
 
   try {
     if (method === "initialize") {
       return NextResponse.json({
         jsonrpc: "2.0",
         result: {
-          protocolVersion: "2024-11-05",
+          protocolVersion: "2025-03-26",
           capabilities: { tools: {} },
-          serverInfo: { name: "crypto-context", version: "0.1.0" },
+          serverInfo: { name: "crypto-context", version: "0.1.1" },
         },
         id,
       });
@@ -174,6 +186,11 @@ export async function POST(request: NextRequest) {
     if (method === "tools/call") {
       const toolName = (params?.name as string) ?? "";
       const toolArgs = (params?.arguments as Record<string, unknown>) ?? {};
+      if (!TOOLS.some(t => t.name === toolName) || !toolArgs || typeof toolArgs !== "object" || Array.isArray(toolArgs) ||
+          (toolArgs.asset !== undefined && (typeof toolArgs.asset !== "string" || toolArgs.asset.length > 32)) ||
+          (toolArgs.query !== undefined && (typeof toolArgs.query !== "string" || toolArgs.query.length > 2000))) {
+        return NextResponse.json({jsonrpc:"2.0",error:{code:-32602,message:"Invalid tool or arguments"},id});
+      }
       const result = await handleCallTool(toolName, toolArgs, auth.userId, auth.permissionLevel);
       return NextResponse.json({ jsonrpc: "2.0", result, id });
     }
@@ -198,10 +215,13 @@ export async function POST(request: NextRequest) {
 }
 
 // MCP discovery endpoint (GET)
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (request.headers.get("accept")?.includes("text/event-stream")) {
+    return new NextResponse(null, {status:405, headers:{Allow:"POST"}});
+  }
   return NextResponse.json({
     name: "crypto-context",
-    version: "0.1.0",
+    version: "0.1.1",
     description:
       "Personal crypto context layer. Provides your portfolio, investor profile, strategy notes, and trading patterns to AI agents.",
     protocol: "mcp",

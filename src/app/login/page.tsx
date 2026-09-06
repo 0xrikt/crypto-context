@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -11,25 +11,10 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState(searchParams.get("error") ?? "");
+  const [success, setSuccess] = useState(searchParams.get("reset") === "success" ? "Password updated! Log in with your new password." : searchParams.get("confirmed") === "true" ? "Email confirmed! You can now log in." : "");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    const confirmed = searchParams.get("confirmed");
-    const reset = searchParams.get("reset");
-
-    if (errorParam) {
-      setError(decodeURIComponent(errorParam));
-    }
-    if (confirmed === "true") {
-      setSuccess("Email confirmed! You can now log in.");
-    }
-    if (reset === "success") {
-      setSuccess("Password updated! Log in with your new password.");
-    }
-  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -78,8 +63,9 @@ function LoginForm() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>
-              <label className="block text-sm text-gray-500 mb-1.5">Email</label>
+              <label htmlFor="login-email" className="block text-sm text-gray-500 mb-1.5">Email</label>
               <input
+                id="login-email" name="email" autoComplete="email" spellCheck={false}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -90,7 +76,7 @@ function LoginForm() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm text-gray-500">Password</label>
+                <label htmlFor="login-password" className="block text-sm text-gray-500">Password</label>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-emerald-600 hover:text-emerald-500 transition"
@@ -99,6 +85,7 @@ function LoginForm() {
                 </Link>
               </div>
               <input
+                id="login-password" name="password" autoComplete="current-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

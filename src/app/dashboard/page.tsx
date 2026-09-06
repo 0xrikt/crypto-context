@@ -29,7 +29,7 @@ export default function OverviewPage() {
   const errors = portfolio?.errors ?? [];
 
   // --- Full portfolio view ---
-  if (portfolio && (portfolio.holdings?.length ?? 0) > 0) {
+  if (portfolio) {
     return (
       <div className="space-y-8">
         {!onboardingComplete && (
@@ -48,7 +48,7 @@ export default function OverviewPage() {
             align="start"
             title={`Couldn't reach ${errors.length} source${errors.length > 1 ? "s" : ""}`}
           >
-            {errors.map((e) => e.source).join(", ")} — showing the latest data we have. Try syncing again
+            {errors.map((e) => `${e.source}: ${e.error}`).join("; ")}. Try syncing again
             in a moment.
           </Alert>
         )}

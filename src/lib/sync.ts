@@ -1,3 +1,4 @@
+import { withTimeout } from "./timeout";
 import { createExchangeInstance, type SupportedExchange, type ExchangeCredentials } from "./exchange";
 import {
   detectCapabilities,
@@ -8,7 +9,6 @@ import {
   toFetchQuality,
   type TradeRecord,
   type OrderRecord,
-  type TransferRecord,
   type ExchangeCapabilities,
 } from "./exchange-history";
 import { generateTradingProfile } from "./generators/trading-profile";
@@ -44,6 +44,13 @@ export async function syncExchangeContext(
   ) => Promise<void>,
 ): Promise<SyncResult> {
   const startTime = Date.now();
+  const deadline = startTime + 50_000;
+  async function bounded<T>(operation: () => Promise<T>): Promise<T> {
+    if (Date.now() >= deadline) throw new Error("Sync time limit reached");
+    const value = await withTimeout(operation(), deadline - Date.now());
+    if (value === null) throw new Error("Sync time limit reached; retry this source");
+    return value;
+  }
   const exchangeId = connection.exchange as SupportedExchange;
 
   const credentials: ExchangeCredentials = {
@@ -57,7 +64,7 @@ export async function syncExchangeContext(
   const exchange = createExchangeInstance(exchangeId, credentials);
 
   try {
-    await exchange.loadMarkets();
+    await bounded(() => exchange.loadMarkets());
   } catch (err) {
     console.error(`[sync] loadMarkets failed for ${exchangeId}:`, err instanceof Error ? err.message : "unknown");
   }
@@ -67,7 +74,7 @@ export async function syncExchangeContext(
   // Fetch portfolio holdings for symbol list (needed for per-symbol trade fetching)
   let holdings: Array<{ asset: string }> = [];
   try {
-    const balances = await exchange.fetchBalance();
+    const balances = await bounded(() => exchange.fetchBalance());
     holdings = Object.entries(balances.total)
       .filter(([, amount]) => (amount as number) > 0)
       .map(([asset]) => ({ asset }));
@@ -91,9 +98,9 @@ export async function syncExchangeContext(
 
   try {
     const [tradeResult, orderResult, openResult] = await Promise.all([
-      fetchTradeHistory(exchange, holdings),
-      fetchOrderHistory(exchange, holdings),
-      fetchOpenOrdersList(exchange),
+      fetchTradeHistory(exchange, holdings, undefined, deadline),
+      fetchOrderHistory(exchange, holdings, undefined, deadline),
+      fetchOpenOrdersList(exchange, deadline),
     ]);
 
     trades = tradeResult.data;
@@ -108,6 +115,7 @@ export async function syncExchangeContext(
       toFetchQuality(capabilities.fetchMyTrades, tradeResult),
     );
 
+    if (Date.now() >= deadline) throw new Error("Sync time limit reached");
     await upsertFn(userId, connection.id, "trading_profile", markdown, metadata);
 
     result.tradingProfile = {
@@ -122,7 +130,7 @@ export async function syncExchangeContext(
 
   // Fetch fund flow data
   try {
-    const transferResult = await fetchTransferHistory(exchange);
+    const transferResult = await fetchTransferHistory(exchange, undefined, deadline);
 
     const transfersSupported = capabilities.fetchDeposits || capabilities.fetchWithdrawals;
     const { markdown, metadata } = generateFundFlow(
@@ -131,6 +139,7 @@ export async function syncExchangeContext(
       toFetchQuality(transfersSupported, transferResult),
     );
 
+    if (Date.now() >= deadline) throw new Error("Sync time limit reached");
     await upsertFn(userId, connection.id, "fund_flow", markdown, metadata);
 
     result.fundFlow = {

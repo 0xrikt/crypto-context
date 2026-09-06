@@ -4,6 +4,7 @@
  * Exchanges the token_hash for a session, then redirects to dashboard.
  */
 
+import { safeReturnPath } from "@/lib/return-path";
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   // Only same-origin relative paths ("/x", not "//host" or absolute URLs) — open-redirect guard.
   const rawNext = searchParams.get("next") ?? "/dashboard";
-  const next = /^\/(?!\/)/.test(rawNext) ? rawNext : "/dashboard";
+  const next = safeReturnPath(rawNext, request.url);
 
   if (!token_hash || !type) {
     return NextResponse.redirect(

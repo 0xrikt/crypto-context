@@ -25,8 +25,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { content, updatedAt } = await getStrategyNotes(user.id);
-  return NextResponse.json({ notes: content, updatedAt });
+  try {
+    const { content, updatedAt } = await getStrategyNotes(user.id);
+    return NextResponse.json({ notes: content, updatedAt });
+  } catch {
+    return NextResponse.json({ error: "Could not load notes. Please reload to retry." }, { status: 503 });
+  }
 }
 
 export async function PUT(request: NextRequest) {
@@ -42,6 +46,7 @@ export async function PUT(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid request body");
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }

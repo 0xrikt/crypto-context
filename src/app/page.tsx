@@ -463,7 +463,7 @@ export default function Home() {
                   { text: "Read-only API keys — no trading or withdrawals", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
                   { text: "AES-256-GCM encryption for stored keys", icon: "M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" },
                   { text: "Open source — inspect every line yourself", icon: "M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" },
-                  { text: "Delete all your data anytime", icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" },
+                  { text: "Disconnect your data sources anytime", icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" },
                 ].map((item) => (
                   <div key={item.text} className="flex items-center gap-3 text-sm">
                     <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-600/10 ring-1 ring-inset ring-emerald-600/15 flex items-center justify-center">

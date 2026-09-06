@@ -78,7 +78,7 @@ export async function fetchWalletPortfolio(
   const config = CHAIN_CONFIGS[chain];
   const client = createPublicClient({
     chain: config.chain,
-    transport: http(config.rpcUrl, { timeout: FETCH_TIMEOUT_MS }),
+    transport: http(config.rpcUrl, { timeout: FETCH_TIMEOUT_MS, retryCount: 0 }),
   });
 
   const holdings: WalletHolding[] = [];
@@ -94,25 +94,14 @@ export async function fetchWalletPortfolio(
   }));
 
   const [nativeResult, multicallResult] = await Promise.all([
-    client
-      .getBalance({ address })
-      .then((b) => parseFloat(formatUnits(b, 18)))
-      .catch((err: unknown) => {
-        console.error(`[wallet] Native balance failed for ${chain}:${address.slice(0, 10)}:`, err instanceof Error ? err.message : err);
-        return 0;
-      }),
+    client.getBalance({ address }).then((b) => parseFloat(formatUnits(b, 18))),
     tokenCalls.length > 0
-      ? client
-          .multicall({ contracts: tokenCalls })
-          .then((results) =>
-            results.map((r) =>
-              r.status === "success" ? (r.result as bigint) : BigInt(0)
-            )
-          )
-          .catch((err: unknown) => {
-            console.error(`[wallet] Multicall failed for ${chain}:${address.slice(0, 10)}:`, err instanceof Error ? err.message : err);
-            return [] as bigint[];
-          })
+      ? client.multicall({ contracts: tokenCalls }).then((results) => {
+          if (results.some((r) => r.status !== "success")) {
+            throw new Error("Wallet token balances incomplete");
+          }
+          return results.map((r) => r.result as bigint);
+        })
       : Promise.resolve([] as bigint[]),
   ]);
 
@@ -130,7 +119,7 @@ export async function fetchWalletPortfolio(
   ]);
 
   // Add native token
-  if (nativeAmount > 0.00001) {
+  if (nativeAmount > 0) {
     const usdValue = nativeAmount * nativePrice;
     holdings.push({
       asset: config.nativeSymbol,
@@ -148,7 +137,7 @@ export async function fetchWalletPortfolio(
 
     const token = config.tokens[i];
     const amount = parseFloat(formatUnits(raw, token.decimals));
-    if (amount < 0.01) continue;
+    if (!Number.isFinite(amount) || amount <= 0) continue;
 
     const price = tokenPrices[token.coingeckoId] ?? 0;
     const usdValue = amount * price;

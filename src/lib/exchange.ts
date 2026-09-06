@@ -117,16 +117,17 @@ export function createExchangeInstance(
 export async function verifyReadOnly(
   exchangeId: SupportedExchange,
   credentials: ExchangeCredentials
-): Promise<{ valid: boolean; readOnly: boolean; error?: string }> {
+): Promise<{ valid: boolean; readOnly: boolean | null; error?: string }> {
   try {
     const exchange = createExchangeInstance(exchangeId, credentials);
 
     // Test: can we read balances? (should succeed for valid read-only keys)
     await exchange.fetchBalance();
 
+    // Balance access does not prove that trading/withdrawal permissions are absent.
     // Key is valid and can read. Exchange-side permission enforcement
     // is the real guard against trade/withdraw operations.
-    return { valid: true, readOnly: true };
+    return { valid: true, readOnly: null };
   } catch (err) {
     const rawMessage = err instanceof Error ? err.message : String(err);
 

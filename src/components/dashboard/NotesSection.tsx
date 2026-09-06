@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { useDashboard } from "./DashboardProvider";
 import { Button, Card, SectionHeader, Skeleton, Textarea } from "@/components/ui";
 
@@ -22,43 +21,9 @@ const InfoIcon = (
 );
 
 export function NotesSection() {
-  const { notes, notesSaving, notesLoaded, saveNotes } = useDashboard();
-  const [draft, setDraft] = useState(notes);
-  const [dirty, setDirty] = useState(false);
-  const lastSaved = useRef(notes);
-
-  // Sync when the provider's notes load/refresh and the user hasn't started editing.
-  useEffect(() => {
-    if (!dirty) {
-      setDraft(notes);
-      lastSaved.current = notes;
-    }
-  }, [notes, dirty]);
-
-  // Debounced autosave.
-  useEffect(() => {
-    if (!dirty) return;
-    const t = setTimeout(() => {
-      if (draft !== lastSaved.current) {
-        lastSaved.current = draft;
-        setDirty(false);
-        saveNotes(draft);
-      }
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [draft, dirty, saveNotes]);
-
-  function saveNow() {
-    lastSaved.current = draft;
-    setDirty(false);
-    saveNotes(draft);
-  }
-
-  const status = notesSaving
-    ? "Saving…"
-    : dirty
-      ? "Unsaved — autosaves shortly"
-      : "Saved";
+  const { notes: draft, notesSaving, notesLoaded, notesDirty: dirty, notesError, editNotes, saveNotes } = useDashboard();
+  const status = notesError ? "Not saved — retry" : notesSaving ? "Saving…" : dirty ? "Unsaved — autosaves shortly" : "Saved";
+  const saveNow = () => { void saveNotes(draft); };
 
   return (
     <section>
@@ -80,8 +45,7 @@ export function NotesSection() {
         <Textarea
           value={draft}
           onChange={(e) => {
-            setDraft(e.target.value);
-            setDirty(true);
+            editNotes(e.target.value);
           }}
           rows={16}
           placeholder={PLACEHOLDER}
@@ -92,11 +56,12 @@ export function NotesSection() {
         <Skeleton className="h-[22rem] w-full rounded-lg" />
       )}
 
+      {notesError && <p role="alert" className="mt-2 text-sm text-red-600">{notesError}</p>}
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-400">
-          {status} · {draft.length.toLocaleString()}/{MAX.toLocaleString()}
+        <span role="status" aria-live="polite" className="text-xs text-gray-400">
+          {notesLoaded ? status : "Not loaded"} · {draft.length.toLocaleString()}/{MAX.toLocaleString()}
         </span>
-        <Button size="sm" onClick={saveNow} loading={notesSaving} disabled={!dirty && !notesSaving}>
+        <Button size="sm" onClick={saveNow} loading={notesSaving} disabled={!notesLoaded || (!dirty && !notesSaving)}>
           Save
         </Button>
       </div>

@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid request body");
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }

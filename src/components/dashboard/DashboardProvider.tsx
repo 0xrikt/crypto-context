@@ -6,8 +6,11 @@ import {
   useContext,
   useEffect,
   useState,
+  useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { createNotesEditor } from "@/lib/notes-editor";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useToast, useConfirm } from "@/components/ui";
@@ -58,6 +61,9 @@ interface DashboardContextValue {
   /** When the notes were last saved — drives the "profile is stale" hint. */
   notesUpdatedAt: string | null;
   notesSaving: boolean;
+  notesDirty: boolean;
+  notesError: string | null;
+  editNotes: (content: string) => void;
   /** False until the user's saved notes have been fetched (prevents editor flash). */
   notesLoaded: boolean;
   syncing: boolean;
@@ -194,12 +200,33 @@ export function DashboardProvider({
   const [investorProfile, setInvestorProfile] = useState<InvestorProfile | null>(
     mock?.investorProfile ?? null
   );
-  const [notes, setNotes] = useState(mock?.notes ?? "");
+
   const [notesUpdatedAt, setNotesUpdatedAt] = useState<string | null>(null);
-  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesEditor] = useState(() => createNotesEditor(mock?.notes ?? "", async (content) => {
+    if (!isMock) {
+      const response = await fetch("/api/notes", {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({content})});
+      if (!response.ok) throw new Error("Could not save notes");
+    }
+    setNotesUpdatedAt(new Date().toISOString());
+  }));
+  const noteState = useSyncExternalStore(notesEditor.subscribe, notesEditor.getSnapshot, notesEditor.getSnapshot);
+  const notes = noteState.content;
+  const notesSaving = noteState.saving;
+  const notesDirty = noteState.content !== noteState.saved;
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      const state = notesEditor.getSnapshot();
+      if (state.content !== state.saved) {event.preventDefault();event.returnValue="";}
+    };
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => {window.removeEventListener("beforeunload", beforeUnload);};
+  }, [notesEditor]);
+  const [notesLoadError, setNotesLoadError] = useState<string | null>(null);
   const [notesLoaded, setNotesLoaded] = useState(isMock);
   const [loading, setLoading] = useState(!isMock);
   const [syncing, setSyncing] = useState(false);
+  const contextPending = useRef(0);
+  const syncPending = useRef(false);
   const [contextSyncing, setContextSyncing] = useState(false);
   const [profileGenerating, setProfileGenerating] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(
@@ -250,6 +277,7 @@ export function DashboardProvider({
   const syncContext = useCallback(
     async (connectionId: string) => {
       if (isMock) return;
+      contextPending.current++;
       setContextSyncing(true);
       try {
         const res = await fetch("/api/exchange/sync", {
@@ -257,14 +285,24 @@ export function DashboardProvider({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ connectionId }),
         });
-        if (res.ok) fetchContextDocs();
+        if (!res.ok) {toast.error("Trade history sync failed. Retry this source.");return false;}
+        const data = await res.json();
+        const result = data.result;
+        await fetchContextDocs();
+        if (!result?.tradingProfile?.success || !result?.fundFlow?.success || result.tradingProfile.error || result.fundFlow.error) {
+          toast.error("History is incomplete. Review source warnings before relying on the profile.");
+          return false;
+        }
+        return true;
       } catch {
-        /* non-critical */
+        toast.error("Network error while syncing history. Retry this source.");
+        return false;
       } finally {
-        setContextSyncing(false);
+        contextPending.current--;
+        setContextSyncing(contextPending.current > 0);
       }
     },
-    [isMock, fetchContextDocs]
+    [isMock, fetchContextDocs, toast]
   );
 
   // Build the sanitized aggregate payload the profile endpoint expects.
@@ -300,7 +338,12 @@ export function DashboardProvider({
         }, 1200);
         return;
       }
+      if (!(await notesEditor.save())) {toast.error("Save your notes before generating a profile.");return;}
       const p = override ?? portfolio;
+      if (p?.incomplete) {
+        toast.error("Profile unchanged: some sources or prices are unavailable. Retry sync when data is complete.");
+        return;
+      }
       if (!p || (p.holdings?.length ?? 0) === 0) {
         toast.toast("Sync your portfolio first — the profile is generated from your holdings.");
         return;
@@ -316,6 +359,7 @@ export function DashboardProvider({
         if (res.ok) {
           const data = await res.json();
           if (data.profile) setInvestorProfile(data.profile);
+          if (data.persisted === false) toast.error("Profile could not be saved; agents still see the previous version. Retry generation.");
         } else {
           toast.error("Couldn't generate your investor profile. Try again in a moment.");
         }
@@ -325,7 +369,7 @@ export function DashboardProvider({
         setProfileGenerating(false);
       }
     },
-    [isMock, portfolio, buildProfilePayload, toast]
+    [isMock, portfolio, buildProfilePayload, toast, notesEditor]
   );
 
   // --- Initial load (real mode only) ---
@@ -349,7 +393,7 @@ export function DashboardProvider({
 
       const [{ data: conns }, { data: ws }] = await Promise.all([
         supabase.from("connections").select("id, exchange, label, created_at").eq("user_id", u.id),
-        supabase.from("wallets").select("id, address, chain, label, created_at").eq("user_id", u.id),
+        supabase.from("wallets").select("id, address, chain, label, brand, created_at").eq("user_id", u.id),
       ]);
       if (!active) return;
 
@@ -367,16 +411,17 @@ export function DashboardProvider({
         .then((d) => d && active && d.profile && setInvestorProfile(d.profile))
         .catch(() => {});
 
-      // User-authored strategy notes (non-blocking).
+      // Editing stays disabled until saved notes are known; never overwrite unknown data.
       fetch("/api/notes")
-        .then((r) => (r.ok ? r.json() : null))
+        .then((r) => {if (!r.ok) throw new Error("load failed");return r.json();})
         .then((d) => {
-          if (!d || !active) return;
-          if (typeof d.notes === "string") setNotes(d.notes);
+          if (!active) return;
+          if (typeof d.notes !== "string") throw new Error("invalid notes");
+          notesEditor.load(d.notes);
           if (typeof d.updatedAt === "string") setNotesUpdatedAt(d.updatedAt);
+          setNotesLoaded(true);
         })
-        .catch(() => {})
-        .finally(() => active && setNotesLoaded(true));
+        .catch(() => {if (active) setNotesLoadError("Could not load saved notes. Reload the page to retry; editing is disabled to protect your existing notes.");});
 
       setLoading(false);
 
@@ -390,7 +435,7 @@ export function DashboardProvider({
     return () => {
       active = false;
     };
-  }, [isMock, router, fetchPortfolio, fetchContextDocs]);
+  }, [isMock, router, fetchPortfolio, fetchContextDocs, notesEditor]);
 
   // --- Handlers ---
   const sync = useCallback(() => {
@@ -410,10 +455,14 @@ export function DashboardProvider({
     // Fetch balances, refresh per-venue context docs, then (re)build the holistic
     // profile from the fresh aggregates + freshly-written docs. Sequenced so GLM
     // sees current data; profile generation never blocks the portfolio render.
+    if (syncPending.current) return;
+    syncPending.current = true;
     void (async () => {
-      const data = await fetchPortfolio();
-      await Promise.all(connections.map((c) => syncContext(c.id)));
-      if (data && data.holdings.length > 0) await generateProfile(data);
+      try {
+        const data = await fetchPortfolio();
+        await Promise.all(connections.map((c) => syncContext(c.id)));
+        if (data && data.holdings.length > 0) await generateProfile(data);
+      } finally {syncPending.current = false;}
     })();
   }, [isMock, connections, fetchPortfolio, syncContext, generateProfile, toast]);
 
@@ -483,7 +532,10 @@ export function DashboardProvider({
         if (res.ok) {
           const remaining = connections.filter((c) => c.id !== id);
           setConnections(remaining);
-          if (remaining.length === 0 && wallets.length === 0) setPortfolio(null);
+          setPortfolio(null);
+          setInvestorProfile(null);
+          setContextDocs([]);
+          await Promise.all([fetchPortfolio(), fetchContextDocs()]);
           toast.success("Exchange disconnected");
         } else {
           toast.error("Failed to disconnect. Please try again.");
@@ -492,7 +544,7 @@ export function DashboardProvider({
         toast.error("Network error. Please try again.");
       }
     },
-    [isMock, confirm, connections, wallets, toast]
+    [isMock, confirm, connections, wallets, toast, fetchPortfolio, fetchContextDocs]
   );
 
   const connectWallet = useCallback(
@@ -620,7 +672,9 @@ export function DashboardProvider({
         if (res.ok) {
           const remaining = wallets.filter((w) => w.id !== id);
           setWallets(remaining);
-          if (remaining.length === 0 && connections.length === 0) setPortfolio(null);
+          setPortfolio(null);
+          setInvestorProfile(null);
+          await fetchPortfolio();
           toast.success("Wallet removed");
         } else {
           toast.error("Failed to remove wallet. Please try again.");
@@ -629,7 +683,7 @@ export function DashboardProvider({
         toast.error("Network error. Please try again.");
       }
     },
-    [isMock, confirm, wallets, connections, toast]
+    [isMock, confirm, wallets, connections, toast, fetchPortfolio]
   );
 
   const disconnectWalletGroup = useCallback(
@@ -679,10 +733,13 @@ export function DashboardProvider({
       setWallets(remaining);
       if (remaining.length === 0 && connections.length === 0) setPortfolio(null);
 
+      setPortfolio(null);
+      setInvestorProfile(null);
+      await fetchPortfolio();
       if (failed > 0) toast.error(`Couldn't remove ${failed} chain${failed > 1 ? "s" : ""}. Try again.`);
       else toast.success("Wallet removed");
     },
-    [isMock, confirm, connections, user, toast]
+    [isMock, confirm, connections, user, toast, fetchPortfolio]
   );
 
   const generateToken = useCallback(
@@ -760,42 +817,23 @@ export function DashboardProvider({
   );
 
   const logout = useCallback(async () => {
+    if (!(await notesEditor.save())) {toast.error("Save your notes before signing out.");return;}
     if (isMock) {
       toast.toast("Demo mode — logout is disabled");
       return;
     }
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/");
-  }, [isMock, router, toast]);
+  }, [isMock, router, toast, notesEditor]);
 
-  const saveNotes = useCallback(
-    async (content: string) => {
-      setNotes(content); // keep provider state in sync with the editor
-      if (isMock) {
-        setNotesSaving(true);
-        setTimeout(() => setNotesSaving(false), 400);
-        return;
-      }
-      setNotesSaving(true);
-      try {
-        const res = await fetch("/api/notes", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-        if (!res.ok) toast.error("Failed to save notes. Please try again.");
-        else setNotesUpdatedAt(new Date().toISOString());
-      } catch {
-        toast.error("Network error while saving notes.");
-      } finally {
-        setNotesSaving(false);
-      }
-    },
-    [isMock, toast]
-  );
+  const saveNotes = useCallback(async (content: string) => {
+    if (content !== notesEditor.getSnapshot().content) notesEditor.edit(content);
+    await notesEditor.save();
+  }, [notesEditor]);
 
   const getFullContext = useCallback(async (): Promise<string> => {
     if (isMock) return MOCK_FULL_CONTEXT;
+    if (!(await notesEditor.save())) {toast.error("Save your notes before exporting context.");return "";}
     try {
       const res = await fetch("/api/context/full");
       if (res.ok) return await res.text();
@@ -805,7 +843,7 @@ export function DashboardProvider({
       toast.error("Network error while loading your context.");
       return "";
     }
-  }, [isMock, toast]);
+  }, [isMock, toast, notesEditor]);
 
   const value: DashboardContextValue = {
     user,
@@ -818,6 +856,9 @@ export function DashboardProvider({
     notes,
     notesUpdatedAt,
     notesSaving,
+    notesDirty,
+    notesError: notesLoadError ?? noteState.error,
+    editNotes: notesEditor.edit,
     notesLoaded,
     syncing,
     contextSyncing,

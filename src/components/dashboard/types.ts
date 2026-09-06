@@ -3,6 +3,7 @@ export interface Holding {
   amount: number;
   usdValue: number;
   allocation: number;
+  priceUnavailable?: boolean;
   sources: string[];
 }
 
@@ -27,6 +28,8 @@ export interface PortfolioData {
   holdings: Holding[];
   snapshots: ExchangeSnapshot[];
   walletSnapshots?: WalletSnapshotSummary[];
+  incomplete?: boolean;
+  statuses?: Array<{label:string;kind:string;status:string;fetchedAt:string|null}>;
   errors?: Array<{ source: string; error: string }>;
 }
 

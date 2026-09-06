@@ -1,10 +1,11 @@
 "use client";
 
+import { useHydrated } from "@/lib/use-hydrated";
+
 import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -90,8 +91,7 @@ export function useToast(): ToastApi {
 }
 
 function Toaster({ toasts, onClose }: { toasts: ToastItem[]; onClose: (id: number) => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useHydrated();
   if (!mounted) return null;
 
   return createPortal(

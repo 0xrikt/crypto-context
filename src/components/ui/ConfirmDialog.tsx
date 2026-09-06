@@ -45,7 +45,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      <Modal open={options !== null} onClose={() => close(false)}>
+      <Modal label={options?.title} open={options !== null} onClose={() => close(false)}>
         {options && (
           <div>
             <h3 className="text-base font-bold text-gray-900">{options.title}</h3>

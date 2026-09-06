@@ -123,7 +123,7 @@ export function ConnectExchangeForm({ onConnect, onCancel }: Props) {
         {ShieldIcon}
         <p className="text-xs text-gray-500 leading-relaxed">
           <span className="text-gray-700 font-medium">Security:</span> Only provide a read-only API
-          key. We verify permissions before accepting.
+          key. Disable trading and withdrawals at your exchange. We verify balance access; this does not verify that other permissions are disabled.
         </p>
       </div>
 

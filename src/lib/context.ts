@@ -1,4 +1,4 @@
-import type { PortfolioSnapshot, PortfolioHolding } from "./exchange";
+import type { PortfolioSnapshot } from "./exchange";
 import type { WalletSnapshot } from "./wallet";
 
 /**
@@ -76,6 +76,7 @@ export function generatePortfolioContext(
       asset: string;
       total: number;
       usdValue: number;
+      unpriced: boolean;
       venues: { source: string; amount: number }[];
     }
   >();
@@ -89,12 +90,14 @@ export function generatePortfolioContext(
       if (existing) {
         existing.total += h.total;
         existing.usdValue += h.usdValue ?? 0;
+        existing.unpriced ||= h.usdValue === null;
         existing.venues.push({ source: snapshot.exchange, amount: h.total });
       } else {
         aggregated.set(h.asset, {
           asset: h.asset,
           total: h.total,
           usdValue: h.usdValue ?? 0,
+          unpriced: h.usdValue === null,
           venues: [{ source: snapshot.exchange, amount: h.total }],
         });
       }
@@ -109,12 +112,14 @@ export function generatePortfolioContext(
       if (existing) {
         existing.total += h.total;
         existing.usdValue += h.usdValue ?? 0;
+        existing.unpriced ||= h.usdValue === null;
         existing.venues.push({ source: h.source, amount: h.total });
       } else {
         aggregated.set(h.asset, {
           asset: h.asset,
           total: h.total,
           usdValue: h.usdValue ?? 0,
+          unpriced: h.usdValue === null,
           venues: [{ source: h.source, amount: h.total }],
         });
       }
@@ -132,7 +137,6 @@ export function generatePortfolioContext(
   const walletSyncs = walletSnapshots.map((s) => s.fetchedAt);
   const lastSync = [...cexSyncs, ...walletSyncs].sort().pop();
 
-  const sourceCount = snapshots.length + walletSnapshots.length;
   const sourceParts: string[] = [];
   if (snapshots.length > 0)
     sourceParts.push(`${snapshots.length} exchange${snapshots.length > 1 ? "s" : ""}`);
@@ -145,6 +149,10 @@ export function generatePortfolioContext(
     `> Total value: ${formatUsd(grandTotal)} (across ${sourceParts.join(" + ")})`
   );
 
+  if (sorted.some(h => h.unpriced)) {
+    lines.push("> ⚠ Valuation incomplete: some assets have no price. Total and percentages cover priced balances only, not the entire portfolio.");
+  }
+  lines.push("> Coverage: connected exchange balance accounts and supported wallet balances only. EVM token discovery uses a fixed supported-token list; DeFi positions, staking, debt and other account types may be absent.");
   const degraded = sourceStatuses.filter((s) => s.status !== "live");
   if (degraded.length > 0) {
     const cached = degraded.filter((s) => s.status === "cached");
@@ -164,7 +172,7 @@ export function generatePortfolioContext(
   lines.push("|-------|--------|-------|----------------|----------|");
 
   for (const h of sorted) {
-    if (h.usdValue < 1) continue;
+    if (!h.unpriced && h.usdValue < 1) continue;
 
     const pct =
       grandTotal > 0 ? formatPercent((h.usdValue / grandTotal) * 100) : "—";
@@ -177,7 +185,7 @@ export function generatePortfolioContext(
       .join(" + ");
 
     lines.push(
-      `| ${h.asset} | ${h.total.toLocaleString("en-US", { maximumFractionDigits: 6 })} | ${formatUsd(h.usdValue)} | ${pct} | ${location} |`
+      `| ${h.asset} | ${h.total.toLocaleString("en-US", { maximumFractionDigits: 6 })} | ${h.unpriced ? "Unknown (price unavailable)" : formatUsd(h.usdValue)} | ${h.unpriced ? "—" : pct} | ${location} |`
     );
   }
 
@@ -294,6 +302,7 @@ export function generateFullContext(
   // Falls back gracefully when not yet generated.
   if (hasProfile) {
     sections.push(investorProfileMd!.trim());
+    sections.push("\n> This profile reflects data at its generation time. Holdings and source coverage may have changed; current portfolio evidence takes precedence over older profile claims.");
 
     // A profile generated before the user's latest notes can contradict them
     // (e.g. notes rewritten in another language, or a thesis change). Tell the

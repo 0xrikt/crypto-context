@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useHydrated } from "@/lib/use-hydrated";
+
+import { useState } from "react";
 import Link from "next/link";
 import type { McpToken } from "./types";
 import {
@@ -134,8 +136,8 @@ function TokenReveal({
 }
 
 export function McpSection({ tokens, hasConnections, onGenerateToken, onRevokeToken }: Props) {
-  const [origin, setOrigin] = useState("https://your-app.vercel.app");
-  useEffect(() => setOrigin(window.location.origin), []);
+  const mounted = useHydrated();
+  const origin = mounted ? window.location.origin : "https://cryptocontext.earthonline.site";
 
   const [newToken, setNewToken] = useState("");
   const [showForm, setShowForm] = useState(false);

@@ -90,6 +90,10 @@ export async function deleteWallet(
 ): Promise<void> {
   const supabase = await createClient();
 
+  // Invalidate derived data before deleting its source; failure must be visible.
+  const { error: profileError } = await supabase.from("investor_profiles").delete().eq("user_id", userId);
+  if (profileError) throw new Error("Failed to invalidate investor profile");
+
   const { error } = await supabase
     .from("wallets")
     .delete()
@@ -175,6 +179,10 @@ export async function deleteConnection(
   userId: string
 ): Promise<void> {
   const supabase = await createClient();
+
+  // Invalidate derived data before deleting its source; failure must be visible.
+  const { error: profileError } = await supabase.from("investor_profiles").delete().eq("user_id", userId);
+  if (profileError) throw new Error("Failed to invalidate investor profile");
 
   const { error } = await supabase
     .from("connections")
@@ -430,8 +438,8 @@ export async function getInvestorProfile(
 
 /**
  * Read the user's strategy notes (+ when they were last edited — used to flag a
- * stale investor profile). Returns empty content when absent OR when the table
- * isn't provisioned yet (pre-migration) — callers treat that as a soft state.
+ * stale investor profile). Only an absent row is empty; database errors must
+ * keep the editor locked until a successful read.
  */
 export async function getStrategyNotes(
   userId: string,
@@ -445,8 +453,7 @@ export async function getStrategyNotes(
     .maybeSingle();
 
   if (error) {
-    console.error("[store] getStrategyNotes failed (table missing?):", error.message);
-    return { content: "", updatedAt: null };
+    throw new Error("Could not load saved strategy notes");
   }
   return {
     content: (data?.content as string | undefined) ?? "",

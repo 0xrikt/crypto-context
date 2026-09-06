@@ -46,7 +46,7 @@ export function OnboardingChecklist({
     {
       key: "portfolio",
       title: "See your portfolio",
-      description: "Sync to pull every venue into one complete, unified picture.",
+      description: "Sync supported balances and check which sources are up to date.",
       done: hasPortfolio,
     },
     {
@@ -72,7 +72,7 @@ export function OnboardingChecklist({
           </span>
         </div>
         <p className="text-sm text-gray-500 mt-0.5 mb-4">
-          Three steps to a complete, agent-ready portfolio context.
+          Three steps to prepare your portfolio context for an agent.
         </p>
 
         <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden mb-6">

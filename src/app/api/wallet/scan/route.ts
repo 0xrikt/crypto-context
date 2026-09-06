@@ -1,3 +1,4 @@
+import { withTimeout } from "@/lib/timeout";
 /**
  * POST /api/wallet/scan — probe one EVM address across all supported EVM
  * chains and report where it actually holds value.
@@ -23,13 +24,6 @@ interface ChainScanResult {
   ok: boolean;
   totalUsdValue: number;
   holdingsCount: number;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
-  return Promise.race([
-    promise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
-  ]);
 }
 
 export async function POST(request: NextRequest) {
@@ -59,6 +53,7 @@ export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
     body = await request.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid request body");
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
